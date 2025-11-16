@@ -1,18 +1,28 @@
 module Plugin
 
-import ParseTree;
-import Syntax;
 import IO;
+import ParseTree;
+import util::Reflective;
+import util::IDEServices;
+import util::LanguageServer;
+import Relation;
+import Syntax;
 
-public Tree parseALU(str src, loc origin) {
-  return parse(#start[Program], src, origin);
-}
+PathConfig pcfg = getProjectPathConfig(|project://proyecto2|);
+Language tdslLang = language(pcfg, "ALU", "alu", "Plugin,", "contribs");
 
-public Tree parseALU(str src) {
-  return parse(#start[Program], src);
-}
+set[LanguageService] contribs() = {
+  parser(start[Program](str program, loc src){
+    println("Run parser");
+    return parse(#start[Program], program, src, allowAmbiguity = true);
+  })
+};
 
 void demo() {
   println("ALU Language Plugin Loaded");
   println("Use Parser module to parse ALU programs");
+}
+
+void main() {
+  registerLanguage(tdslLang);
 }
