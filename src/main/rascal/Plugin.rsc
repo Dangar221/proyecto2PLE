@@ -18,11 +18,6 @@ set[LanguageService] contribs() = {
   })
 };
 
-void demo() {
-  println("ALU Language Plugin Loaded");
-  println("Use Parser module to parse ALU programs");
-}
-
 void main() {
   registerLanguage(tdslLang);
 }
