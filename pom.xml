@@ -29,7 +29,12 @@
     <dependency>
       <groupId>org.rascalmpl</groupId>
       <artifactId>rascal</artifactId>
-      <version>0.40.17</version>
+      <version>0.33.3</version>
+    </dependency>
+    <dependency>
+      <groupId>org.rascalmpl</groupId>
+      <artifactId>typepal</artifactId>
+      <version>0.8.6</version>
     </dependency>
   </dependencies>
 

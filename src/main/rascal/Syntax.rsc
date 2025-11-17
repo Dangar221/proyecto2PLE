@@ -7,6 +7,19 @@ syntax Module
 = funcDef: FunctionDef
 | dataDecl: Data
 ; 
+syntax Type
+= "Int"
+| "Bool"
+| "Char"
+| "String"
+| "Float"
+;
+
+syntax TypedId
+= typed: Id name ":" Type typeAnn
+| untyped: Id name
+;
+
 // Spec-compliant Data declarations
 syntax Data =
   dataWithAssign: Id assignName "=" "data" "with" Variables vars DataBody body "end" Id endName
