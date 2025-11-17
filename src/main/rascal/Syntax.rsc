@@ -21,15 +21,7 @@ syntax TypedId
 ;
 
 // Spec-compliant Data declarations
-syntax Data =
-  dataWithAssign: Id assignName "=" "data"
-                  (":" Type dataType)?
-                  "with" Variables vars DataBody body "end" Id endName
-| dataNoAssign: "data"
-                Id typeName
-                (":" Type dataType)?
-                "with" Variables vars DataBody body
-                "end" Id endName ;
+syntax Data = dataWithAssign: Id assignName "=" "data" "with" Variables vars DataBody body "end" Id endName | dataNoAssign: "data" "with" Variables vars DataBody body "end" Id endName ;
 
 syntax DataBody = consBody: Constructor | funcBody: FunctionDef;
 
