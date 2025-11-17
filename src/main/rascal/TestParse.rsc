@@ -33,7 +33,7 @@ void testOperator(str name, str code) {
 
 void testFile() {
   try {
-    loc file = |project://proyecto2/instance/test_comparison.alu|;
+    loc file = |project://proyecto3/instance/test_comparison.alu|;
     println("Reading: <file>");
     str code = readFile(file);
     println("Code:\n<code>");

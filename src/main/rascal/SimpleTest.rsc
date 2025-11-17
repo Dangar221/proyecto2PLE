@@ -7,7 +7,7 @@ import ParseTree;
 void testParse() {
   println("=== Testing Comparison Operators Parsing ===\n");
   
-  str code = readFile(|project://proyecto2/instance/test_comparison.alu|);
+  str code = readFile(|project://proyecto3/instance/test_comparison.alu|);
   
   println("Code:");
   println(code);
