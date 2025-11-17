@@ -1,8 +1,7 @@
 module Checker
-
 import AST;
+import Syntax;
 extend analysis::typepal::TypePal;
-import ParseTree;
 
 // =======================
 // Type converter
@@ -64,7 +63,7 @@ void collectDataDecl(DataDecl d, Collector c) {
   switch(d) {
 
     case dataCtorNoAssign(fields, cons, endName): {
-      c.define(endName, dataTypeId(), d, defType(customType(endName)));
+      c.define(endName, dataTypeId(), d, defType(customType(endName)))
       defineFields(fields, c);
       collectConstructor(cons, endName, c);
     }
@@ -102,11 +101,9 @@ void collectConstructor(ConstructorDef cons, str parentType, Collector c) {
       c.define(name, structId(), cons, defType(customType(parentType)));
 
       // Validación: cada campo usado debe haber sido declarado
-     set[str] declared = 
-    { n | u <- usedFields,
-          u := typedId(n, _) }
-  + { n | u <- usedFields,
-          u := untypedId(n) };
+      set[str] declared = 
+        { n | u <- usedFields, u := typedId(n, _) }
+        + { n | u <- usedFields, u := untypedId(n) };
 
       for (u <- usedFields) {
         switch(u) {
@@ -167,15 +164,15 @@ void collectStatement(Statement s, Collector c) {
     case invokeStmt(inv):
       collectInvocation(inv, c);
 
-    case iteratorStmt(_, _, _):
-      ;
+    //case iteratorStmt(_, _, _):
+     //;
 
     case rangeStmtWithVar(_, fromP, toP):
-      collectExpression(fromP, c);
+      collectExpression(fromP, c)
       collectExpression(toP, c);
 
     case rangeStmtBare(fromP, toP):
-      collectExpression(fromP, c);
+      collectExpression(fromP, c)
       collectExpression(toP, c);
   }
 }
@@ -213,15 +210,19 @@ void collectFuncCall(FunctionCall fc, Collector c) {
 // Invocation
 // ======================================================
 void collectInvocation(Invocation inv, Collector c) {
-  switch(inv) {
-    case dollarInvoke(name, vars):
+  switch (inv) {
+
+    case dollarInvoke(name, vars): {
       c.use(name, {functionId()});
-      ;
-    case methodInvoke(recv, method, vars):
+    }
+
+    case methodInvoke(recv, method, vars): {
       c.use(recv,   {variableId()});
       c.use(method, {functionId()});
+    }
   }
 }
+
 
 // ======================================================
 // Conditionals
@@ -229,15 +230,19 @@ void collectInvocation(Invocation inv, Collector c) {
 void collectConditional(ConditionalStmt cs, Collector c) {
   switch(cs) {
 
-    case ifStmt(i):
+    case ifStmt(i): {
       collectIf(i, c);
+    }
 
-    case condStmt(cond):
+    case condStmt(cond): {
       collectExpression(cond.cond, c);
-      for(cl <- cond.clauses)
+      for (cl <- cond.clauses) {
         collectCondClause(cl, c);
+      }
+    }
   }
 }
+
 
 // ---------------------
 // If
@@ -281,7 +286,9 @@ void collectLoop(LoopStmt l, Collector c) {
 
       c.enterScope(l);
       c.define(v, variableId(), l, defType(intType()));
-      for(s <- body) collectStatement(s, c);
+      for (s <- body) {
+        collectStatement(s, c);
+      }
       c.leaveScope(l);
     }
 
@@ -289,11 +296,14 @@ void collectLoop(LoopStmt l, Collector c) {
       collectExpression(e, c);
       c.enterScope(l);
       c.define(v, variableId(), l, defType(unknownType()));
-      for(s <- body) collectStatement(s, c);
+      for (s <- body) {
+        collectStatement(s, c);
+      }
       c.leaveScope(l);
     }
   }
 }
+
 
 // ======================================================
 // Expressions
@@ -316,10 +326,12 @@ void collectOr(OrExpr e, Collector c) {
       c.requireEqual(boolType(), e, error(e, "OR must be boolean"));
     }
 
-    case andExpr(a):
+    case andExpr(a): {
       collectAnd(a, c);
+    }
   }
 }
+
 
 // ======================================================
 // AND
@@ -486,3 +498,5 @@ void collectLiteral(Literal lit, Collector c) {
     case stringLit(_): c.fact(lit, stringType());
   }
 }
+
+
