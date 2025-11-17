@@ -1,17 +1,17 @@
 test OkInteger1 [[
-    function testCond() do Integer x =2 end testCond 
+    function testCond() do Int x =2 end testCond 
 ]]
 
 test OkInteger2 [[
-    function testCond() do Integer y=4 Integer x=y end testCond 
+    function testCond() do Int y=4 Int x=y end testCond 
 ]]
 
 test NoOkInteger1 [[
-    function testCond() do Integer y=4 Integer x=z end testCond 
+    function testCond() do Int y=4 Int x=z end testCond 
 ]] expect {"Undefined variable ⁠ z ⁠"}
 
 test NoOkInteger2 [[
-    function testCond() do String y="HolaMundo" Integer x=y end testCond 
+    function testCond() do String y="HolaMundo" Int x=y end testCond 
 ]] expect {"Incorrect initialization, expected ⁠ int ⁠, found ⁠ str ⁠"}
 
 test OkFloat1 [[
@@ -23,5 +23,5 @@ test OkFloat2 [[
 ]]
 
 test NoOkFloat1 [[
-    function testCond() do Float y=4.3 Integer x=z end testCond 
+    function testCond() do Float y=4.3 Int x=z end testCond 
 ]] expect {"Undefined variable ⁠ z ⁠"}
