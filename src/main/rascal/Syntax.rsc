@@ -33,7 +33,7 @@ syntax Data =
 
 syntax DataBody = consBody: Constructor | funcBody: FunctionDef;
 
-syntax Constructor = constructor: Id name "=" "struct" "(" Variables vars ")";
+syntax Constructor = constructor: Id name ":" Type ctorType "=" "struct" "(" Variables vars ")";
 
 // (legacy DataAbstraction removed)
 
@@ -51,14 +51,14 @@ syntax Statement
 | conditionalStmt: ConditionalStmt ifs 
 | loopStmt: LoopStmt loop 
 | invokeStmt: Invocation inv
-| iteratorStmt: Id varName "=" "iterator" "(" {Id ","}* inVars ")" "yielding" "(" {Id ","}* outVars ")"
+| iteratorStmt: TypedId varName "=" "iterator" "(" {Id ","}* inVars ")" "yielding" "(" {Id ","}* outVars ")"
 | rangeStmtWithVar: TypedId varName "=" "from" Principal fromP "to" Principal toP
 | rangeStmtBare: "from" Principal fromP "to" Principal toP
 ;
 
 
 // Variables list (for invocations/iterators)
-syntax Variables = variables: Id ("," Id)* ; // retained for other uses if needed
+syntax Variables = variables: TypedId ("," TypedId)* ;
 
 // Invocation forms
 syntax Invocation
