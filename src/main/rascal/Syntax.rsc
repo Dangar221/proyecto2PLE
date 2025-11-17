@@ -22,9 +22,14 @@ syntax TypedId
 
 // Spec-compliant Data declarations
 syntax Data =
-  dataWithAssign: Id assignName "=" "data" "with" Variables vars DataBody body "end" Id endName
-| dataNoAssign: "data" "with" Variables vars DataBody body "end" Id endName
-;
+  dataWithAssign: Id assignName "=" "data"
+                  (":" Type dataType)?
+                  "with" Variables vars DataBody body "end" Id endName
+| dataNoAssign: "data"
+                Id typeName
+                (":" Type dataType)?
+                "with" Variables vars DataBody body
+                "end" Id endName ;
 
 syntax DataBody = consBody: Constructor | funcBody: FunctionDef;
 
@@ -42,15 +47,15 @@ syntax ParameterList = parameterList: Id ("," Id)* ;
 
 // Sentencias
 syntax Statement
-= assignStmt: Id varName "=" Expression val 
+= assignStmt: TypedId varName "=" Expression val
 | conditionalStmt: ConditionalStmt ifs 
 | loopStmt: LoopStmt loop 
-// New statements per grammar
 | invokeStmt: Invocation inv
 | iteratorStmt: Id varName "=" "iterator" "(" {Id ","}* inVars ")" "yielding" "(" {Id ","}* outVars ")"
-| rangeStmtWithVar: Id varName "=" "from" Principal fromP "to" Principal toP
+| rangeStmtWithVar: TypedId varName "=" "from" Principal fromP "to" Principal toP
 | rangeStmtBare: "from" Principal fromP "to" Principal toP
-; 
+;
+
 
 // Variables list (for invocations/iterators)
 syntax Variables = variables: Id ("," Id)* ; // retained for other uses if needed
