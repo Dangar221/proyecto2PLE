@@ -1,4 +1,5 @@
-X = data with p : Int, q : Int
-point = struct(p : Int, q : Int)
-end X
+data with a, b point = struct(a, b) end point
 
+function usePoint() do
+  # No runtime semantics, just checking parse/implode
+end usePoint

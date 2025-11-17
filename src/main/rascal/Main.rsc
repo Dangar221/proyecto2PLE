@@ -28,7 +28,7 @@ void main() {
 
   for (file <- testFiles) {
     println("=== Running file: <file> ===\n");
-    runFile(|project://proyecto2/instance/<file>|);
+    runFile(|project://proyecto3/instance/<file>|);
     println("\n---\n");
   }
 }

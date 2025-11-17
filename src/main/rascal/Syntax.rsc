@@ -27,7 +27,7 @@ syntax Data = dataWithAssign: Id assignName "=" "data" "with" Variables vars Dat
 
 syntax DataBody = consBody: Constructor | funcBody: FunctionDef;
 
-syntax Constructor = constructor: Id name ":" Type ctorType "=" "struct" "(" Variables vars ")";
+syntax Constructor = constructor: Id name "=" "struct" "(" Variables vars ")";
 
 // (legacy DataAbstraction removed)
 
