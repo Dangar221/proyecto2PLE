@@ -145,7 +145,7 @@ data Statement
   | conditionalStmt(ConditionalStmt ifs)
   | loopStmt(LoopStmt loop)
   | invokeStmt(Invocation inv)
-  | iteratorStmt(str varName, list[str] inVars, list[str] outVars)
-  | rangeStmtWithVar(str varName, Expression fromP, Expression toP)
+  | iteratorStmt(str iterVar, list[str] inVars, list[str] outVars)
+  | rangeStmtWithVar(str rangeVar, Expression fromP, Expression toP)
   | rangeStmtBare(Expression fromP, Expression toP)
   ;
