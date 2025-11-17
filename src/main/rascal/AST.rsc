@@ -1,19 +1,40 @@
 module AST
 
+// Program
 data Program = program(list[Module] modules);
 
+// Módulo: funciones o declaraciones de datos
 data Module
-  = dataDef(DataAbstraction dataAbs)
-  | funcDef(FunctionDef func)
-  | dataDecl(DataDecl decl);
+  = funcDef(FunctionDef func)
+  | dataDecl(DataDecl decl)
+  ;
 
-data DataAbstraction = dataAbstraction(
-  str name,
-  list[str] ids,
-  list[str] fields,
-  str endName
-);
+// Tipos del lenguaje (para anotaciones explícitas)
+data Type
+  = tInt()
+  | tBool()
+  | tChar()
+  | tString()
+  | tFloat()
+  | tUser(str name)    // tipo definido por el usuario (nombre)
+  ;
 
+// Identificadores con/ sin tipo
+data TypedId
+  = typedId(str name, Type typeAnn)
+  | untypedId(str name)
+  ;
+
+// Data declarations (con o sin asign)
+data DataDecl
+  = dataCtorNoAssign(list[TypedId] fields, ConstructorDef cons, str endName)
+  | dataCtorWithAssign(str assignName, list[TypedId] fields, ConstructorDef cons, str endName)
+  ;
+
+// Definición de constructor (nombre y lista de campos usados)
+data ConstructorDef = constructorDef(str name, list[TypedId] fields);
+
+// Definición de función
 data FunctionDef = functionDef(
   str name,
   list[str] params,
@@ -21,14 +42,16 @@ data FunctionDef = functionDef(
   str endName
 );
 
+// Literales
 data Literal
   = intLit(int intValue)
   | floatLit(real realValue)
-  | boolLit(str boolValue)
+  | boolLit(bool boolValue)
   | charLit(str charValue)
   | stringLit(str strValue)
   ;
 
+// Expresiones (jerarquía)
 data Expression = orExpr(OrExpr expr);
 
 data OrExpr
@@ -69,23 +92,26 @@ data Primary
   | varExpr(str name)
   | groupExpr(Expression expr)
   | ctorExpr(ConstructorCall ctor)
-  | invExpr(Invocation inv);
+  | invExpr(Invocation inv)
+  ;
 
-data FunctionCall = funcCall(
-  str name,
-  list[Expression] args
-);
+// Invocaciones y llamadas
+data FunctionCall = funcCall(str name, list[Expression] args);
 
-data ConstructorCall 
+data Invocation
+  = dollarInvoke(str name, list[str] vars)
+  | methodInvoke(str recv, str method, list[str] vars)
+  ;
+
+// Construcciones (sequence/tuple/struct) -> representadas como ConstructorCall en AST
+data ConstructorCall
   = ctorCall(list[Expression] args)
   ;
 
+// Named arg
 data NamedArg = namedArg(str name, Expression expr);
 
-data DataConstruction = dataConstruction(
-  ConstructorCall ctor
-);
-
+// Sentencias / statements
 data ConditionalStmt
   = ifStmt(IfStmt ifs)
   | condStmt(CondStmt cond)
@@ -110,42 +136,16 @@ data CondClause = condClause(
 
 data LoopStmt
   = forRange(str var, Expression fromExpr, Expression toExpr, list[Statement] body)
-  | forIn(str var, Expression expr, list[Statement] body);
+  | forIn(str var, Expression expr, list[Statement] body)
+  ;
 
-data Statement 
-  = assignStmt(str varName, Expression val)
+data Statement
+  = assignStmt(TypedId varName, Expression val)          // variable typed or untyped assignment
   | funcCallStmt(FunctionCall call)
   | conditionalStmt(ConditionalStmt ifs)
   | loopStmt(LoopStmt loop)
-  // Invocation as a statement
   | invokeStmt(Invocation inv)
-  // Iterator declaration statement: x = iterator (a, b) yielding (c, d)
   | iteratorStmt(str varName, list[str] inVars, list[str] outVars)
-  // Range statements: with and without assignment
-  | rangeStmtWithVar(str varName, Principal fromP, Principal toP)
-  | rangeStmtBare(Principal fromP, Principal toP)
+  | rangeStmtWithVar(str varName, Expression fromP, Expression toP)
+  | rangeStmtBare(Expression fromP, Expression toP)
   ;
-
-// Invocation forms
-data Invocation
-  = dollarInvoke(str name, list[str] vars)
-  | methodInvoke(str recv, str method, list[str] vars)
-  ;
-
-// Principal values (subset of Primary used in Range, etc.)
-data Principal
-  = pTrue()
-  | pFalse()
-  | pChar(str charValue)
-  | pInt(int intValue)
-  | pFloat(real realValue)
-  | pId(str name)
-  ;
-
-// Data declarations per spec (constructor-only body for now)
-data DataDecl
-  = dataCtorNoAssign(list[str] vars, ConstructorDef cons, str endName)
-  | dataCtorWithAssign(str assignName, list[str] vars, ConstructorDef cons, str endName)
-  ;
-
-data ConstructorDef = constructorDef(str name, list[str] vars);
