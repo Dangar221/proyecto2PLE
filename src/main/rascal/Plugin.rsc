@@ -8,7 +8,7 @@ import util::LanguageServer;
 import Relation;
 import Syntax;
 
-PathConfig pcfg = getProjectPathConfig(|project://proyecto2|);
+PathConfig pcfg = getProjectPathConfig(|project://proyecto3|);
 Language tdslLang = language(pcfg, "ALU", "alu", "Plugin", "contribs");
 
 set[LanguageService] contribs() = {
