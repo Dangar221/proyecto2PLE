@@ -18,6 +18,7 @@ syntax Type
 
 syntax TypedId
   = typedId: Id name ":" Type typeAnn   
+  | typedIdPrefix: Type typeAnn Id name
   | untypedId: Id name                    
   ;
 
@@ -47,6 +48,7 @@ syntax ParameterList = parameterList: Id ("," Id)* ;
 // Sentencias
 syntax Statement
 = assignStmt: TypedId varName "=" Expression val
+| typedAssignStmt: Type typeAnn Id varName "=" Expression val
 | conditionalStmt: ConditionalStmt ifs 
 | loopStmt: LoopStmt loop 
 | invokeStmt: Invocation inv

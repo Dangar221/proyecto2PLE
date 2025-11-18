@@ -1,20 +1,36 @@
 module Checker
-import AST;
+
 import Syntax;
+import ParseTree;
 extend analysis::typepal::TypePal;
 
 // =======================
-// Type converter
+// Type definitions
 // =======================
-AType astTypeToAType(Type t) {
-  switch(t) {
-    case tInt():    return intType();
-    case tBool():   return boolType();
-    case tChar():   return charType();
-    case tString(): return stringType();
-    case tFloat():  return floatType();
-    case tUser(n):  return customType(n);
-  }
+data AType
+  = intType()
+  | boolType()
+  | charType()
+  | stringType()
+  | floatType()
+  | customType(str name)
+  | unknownType()
+  ;
+
+str prettyAType(intType()) = "int";
+str prettyAType(boolType()) = "bool";
+str prettyAType(charType()) = "char";
+str prettyAType(stringType()) = "str";
+str prettyAType(floatType()) = "float";
+str prettyAType(customType(name)) = name;
+str prettyAType(unknownType()) = "unknown";
+
+AType syntaxTypeToAType(Type t) {
+  if ((Type) `Int` := t) return intType();
+  if ((Type) `Bool` := t) return boolType();
+  if ((Type) `Char` := t) return charType();
+  if ((Type) `String` := t) return stringType();
+  if ((Type) `Float` := t) return floatType();
   return unknownType();
 }
 
@@ -27,476 +43,341 @@ TypePalConfig cfg() = tconfig(
 );
 
 // =======================
-// Entry point
+// Entry point - collect and solve constraints
 // =======================
-public TModel typeCheck(Program p) {
-  Tree dummy = emptyTree();
-  Collector c = newCollector("ALU-checker", dummy, cfg());
-  collectProgram(p, c);
-  return newSolver(dummy, c.run()).run();
-}
-
-// ======================================================
-// Program
-// ======================================================
-void collectProgram(Program p, Collector c) {
-  switch(p) {
-    case program(mods):
-      for (m <- mods) collectModule(m, c);
+void collect(current: (Program) `<Module+ modules>`, Collector c) {
+  for (m <- modules) {
+    collect(m, c);
   }
 }
 
-// ======================================================
-// Module
-// ======================================================
-void collectModule(Module m, Collector c) {
-  switch(m) {
-    case funcDef(fd):  collectFunction(fd, c);
-    case dataDecl(d):  collectDataDecl(d, c);
-  }
+// =======================
+// Module collection
+// =======================
+void collect(current: (Module) `<FunctionDef fd>`, Collector c) {
+  collect(fd, c);
 }
 
-// ======================================================
+void collect(current: (Module) `<Data d>`, Collector c) {
+  collect(d, c);
+}
+
+// =======================
 // Data declarations
-// ======================================================
-void collectDataDecl(DataDecl d, Collector c) {
-  switch(d) {
-
-    case dataCtorNoAssign(fields, cons, endName): {
-      c.define(endName, dataTypeId(), d, defType(customType(endName)))
-      defineFields(fields, c);
-      collectConstructor(cons, endName, c);
-    }
-
-    case dataCtorWithAssign(assignName, fields, cons, endName): {
-      c.define(assignName, dataTypeId(), d, defType(customType(endName)));
-      c.define(endName,     dataTypeId(), d, defType(customType(endName)));
-      defineFields(fields, c);
-      collectConstructor(cons, endName, c);
-    }
+// =======================
+void collect(current: (Data) `<Id assignName> = data with <{TypedId ","}+ vars> <DataBody body> end <Id endName>`, Collector c) {
+  c.define("<assignName>", variableId(), current, defType(customType("<endName>")));
+  for (v <- vars) collect(v, c);
+  collect(body, c);
+  if ("<assignName>" != "<endName>") {
+    c.report(error(current, "Data definition end name mismatch"));
   }
 }
 
-// ------------------------------
-// Helper: define fields
-// ------------------------------
-void defineFields(list[TypedId] fields, Collector c) {
-  for(f <- fields) {
-    switch(f) {
-      case typedId(n, t):
-        c.define(n, fieldId(), f, defType(astTypeToAType(t)));
-      case untypedId(n):
-        c.define(n, fieldId(), f, defType(unknownType()));
-    }
+void collect(current: (Data) `data with <{TypedId ","}+ vars> <DataBody body> end <Id endName>`, Collector c) {
+  for (v <- vars) collect(v, c);
+  collect(body, c);
+}
+
+// =======================
+// DataBody collection
+// =======================
+void collect(current: (DataBody) `<Constructor cons>`, Collector c) {
+  collect(cons, c);
+}
+
+void collect(current: (DataBody) `<FunctionDef fd>`, Collector c) {
+  collect(fd, c);
+}
+
+// =======================
+// Constructor collection
+// =======================
+void collect(current: (Constructor) `<Id name> = struct ( <{TypedId ","}+ vars> )`, Collector c) {
+  c.define("<name>", variableId(), current, defType(unknownType()));
+  for (v <- vars) collect(v, c);
+}
+
+// =======================
+// TypedId collection
+// =======================
+void collect(current: (TypedId) `<Id name> : <Type t>`, Collector c) {
+  c.define("<name>", variableId(), current, defType(syntaxTypeToAType(t)));
+}
+
+void collect(current: (TypedId) `<Type t> <Id name>`, Collector c) {
+  c.define("<name>", variableId(), current, defType(syntaxTypeToAType(t)));
+}
+
+void collect(current: (TypedId) `<Id name>`, Collector c) {
+  c.define("<name>", variableId(), current, defType(unknownType()));
+}
+
+// =======================
+// Function collection
+// =======================
+void collect(current: (FunctionDef) `function <Id name> ( <{Id ","}* params> ) do <Statement* body> end <Id endName>`, Collector c) {
+  c.define("<name>", variableId(), current, defType(unknownType()));
+  c.enterScope(current);
+  
+  for (p <- params) {
+    c.define("<p>", variableId(), p, defType(unknownType()));
+  }
+  
+  for (s <- body) {
+    collect(s, c);
+  }
+  
+  c.leaveScope(current);
+  
+  if ("<name>" != "<endName>") {
+    c.report(error(current, "Function end name mismatch"));
   }
 }
 
-// ------------------------------
-// Constructor
-// ------------------------------
-void collectConstructor(ConstructorDef cons, str parentType, Collector c) {
-  switch(cons) {
-    case constructorDef(name, usedFields): {
+// =======================
+// Statement collection
+// =======================
+void collect(current: (Statement) `<TypedId varName> = <Expression val>`, Collector c) {
+  collect(varName, c);
+  collect(val, c);
+}
 
-      c.define(name, structId(), cons, defType(customType(parentType)));
+void collect(current: (Statement) `<Type typeAnn> <Id varName> = <Expression val>`, Collector c) {
+  AType atype = syntaxTypeToAType(typeAnn);
+  c.define("<varName>", variableId(), current, defType(atype));
+  collect(val, c);
+}
 
-      // Validación: cada campo usado debe haber sido declarado
-      set[str] declared = 
-        { n | u <- usedFields, u := typedId(n, _) }
-        + { n | u <- usedFields, u := untypedId(n) };
+void collect(current: (Statement) `<ConditionalStmt ifs>`, Collector c) {
+  collect(ifs, c);
+}
 
-      for (u <- usedFields) {
-        switch(u) {
-          case typedId(n, _):
-            if (n notin declared)
-              c.report(error(cons, "Field <n> not declared in <parentType>"));
-          case untypedId(n):
-            if (n notin declared)
-              c.report(error(cons, "Field <n> not declared in <parentType>"));
-        }
-      }
-    }
+void collect(current: (Statement) `<LoopStmt loop>`, Collector c) {
+  collect(loop, c);
+}
+
+void collect(current: (Statement) `<Invocation inv>`, Collector c) {
+  collect(inv, c);
+}
+
+void collect(current: (Statement) `<TypedId varName> = iterator ( <{Id ","}* inVars> ) yielding ( <{Id ","}* outVars> )`, Collector c) {
+  collect(varName, c);
+}
+
+void collect(current: (Statement) `<TypedId varName> = from <Expression fromP> to <Expression toP>`, Collector c) {
+  collect(varName, c);
+  collect(fromP, c);
+  collect(toP, c);
+}
+
+void collect(current: (Statement) `from <Expression fromP> to <Expression toP>`, Collector c) {
+  collect(fromP, c);
+  collect(toP, c);
+}
+
+// =======================
+// ConditionalStmt collection
+// =======================
+void collect(current: (ConditionalStmt) `<IfStmt ifStmt>`, Collector c) {
+  collect(ifStmt, c);
+}
+
+void collect(current: (ConditionalStmt) `<CondStmt condStmt>`, Collector c) {
+  collect(condStmt, c);
+}
+
+void collect(current: (IfStmt) `if <Expression cond> then <Statement+ thenBlock> end`, Collector c) {
+  collect(cond, c);
+  for (s <- thenBlock) collect(s, c);
+}
+
+void collect(current: (CondStmt) `cond <Expression cond> do <CondClause+ clauses> end`, Collector c) {
+  collect(cond, c);
+  for (clause <- clauses) {
+    collect(clause, c);
   }
 }
 
-// ======================================================
-// FunctionDef
-// ======================================================
-void collectFunction(FunctionDef f, Collector c) {
-  switch(f) {
-    case functionDef(name, params, body, endName): {
-
-      c.define(name, functionId(), f, defType(unknownType()));
-      c.enterScope(f);
-
-      for(p <- params)
-        c.define(p, paramId(), p, defType(unknownType()));
-
-      for(s <- body)
-        collectStatement(s, c);
-
-      c.leaveScope(f);
-
-      if (name != endName)
-        c.report(error(f, "Function end name mismatch (<name> != <endName>)"));
-    }
-  }
+void collect(current: (CondClause) `<Expression cond> -\> <Statement+ body>`, Collector c) {
+  collect(cond, c);
+  for (s <- body) collect(s, c);
 }
 
-// ======================================================
-// Statements
-// ======================================================
-void collectStatement(Statement s, Collector c) {
-  switch(s) {
-
-    case assignStmt(tid, expr):
-      collectAssign(tid, expr, c);
-
-    case funcCallStmt(fc):
-      collectFuncCall(fc, c);
-
-    case conditionalStmt(cs):
-      collectConditional(cs, c);
-
-    case loopStmt(l):
-      collectLoop(l, c);
-
-    case invokeStmt(inv):
-      collectInvocation(inv, c);
-
-    //case iteratorStmt(_, _, _):
-     //;
-
-    case rangeStmtWithVar(_, fromP, toP):
-      collectExpression(fromP, c)
-      collectExpression(toP, c);
-
-    case rangeStmtBare(fromP, toP):
-      collectExpression(fromP, c)
-      collectExpression(toP, c);
-  }
+// =======================
+// LoopStmt collection
+// =======================
+void collect(current: (LoopStmt) `for <Id var> from <Expression fromExpr> to <Expression toExpr> do <Statement* body> end`, Collector c) {
+  c.enterScope(current);
+  c.define("<var>", variableId(), var, defType(intType()));
+  collect(fromExpr, c);
+  collect(toExpr, c);
+  for (s <- body) collect(s, c);
+  c.leaveScope(current);
 }
 
-// ======================================================
-// Assignments
-// ======================================================
-void collectAssign(TypedId tid, Expression expr, Collector c) {
-
-  collectExpression(expr, c);
-
-  switch(tid) {
-
-    case typedId(n, t): {
-      AType at = astTypeToAType(t);
-      c.define(n, variableId(), tid, defType(at));
-      c.requireEqual(at, expr, error(expr, "Assigned type mismatch"));
-    }
-
-    case untypedId(n): {
-      c.define(n, variableId(), tid, defType(unknownType()));
-    }
-  }
+void collect(current: (LoopStmt) `for <Id var> in <Expression expr> do <Statement* body> end`, Collector c) {
+  c.enterScope(current);
+  c.define("<var>", variableId(), var, defType(unknownType()));
+  collect(expr, c);
+  for (s <- body) collect(s, c);
+  c.leaveScope(current);
 }
 
-// ======================================================
-// FunctionCall
-// ======================================================
-void collectFuncCall(FunctionCall fc, Collector c) {
-  for(e <- fc.args) collectExpression(e, c);
-  c.use(fc.name, {functionId()});
+// =======================
+// Invocation collection
+// =======================
+void collect(current: (Invocation) `<Id name> $ ( <{Id ","}* vars> )`, Collector c) {
+  // Don't enforce resolution of function names
 }
 
-// ======================================================
-// Invocation
-// ======================================================
-void collectInvocation(Invocation inv, Collector c) {
-  switch (inv) {
-
-    case dollarInvoke(name, vars): {
-      c.use(name, {functionId()});
-    }
-
-    case methodInvoke(recv, method, vars): {
-      c.use(recv,   {variableId()});
-      c.use(method, {functionId()});
-    }
-  }
+void collect(current: (Invocation) `<Id recv> . <Id method> ( <{Id ","}* vars> )`, Collector c) {
+  // Don't enforce resolution of receiver variable
 }
 
-
-// ======================================================
-// Conditionals
-// ======================================================
-void collectConditional(ConditionalStmt cs, Collector c) {
-  switch(cs) {
-
-    case ifStmt(i): {
-      collectIf(i, c);
-    }
-
-    case condStmt(cond): {
-      collectExpression(cond.cond, c);
-      for (cl <- cond.clauses) {
-        collectCondClause(cl, c);
-      }
-    }
-  }
+// =======================
+// Expression collection
+// =======================
+void collect(current: (Expression) `<OrExpr expr>`, Collector c) {
+  collect(expr, c);
 }
 
-
-// ---------------------
-// If
-// ---------------------
-void collectIf(IfStmt i, Collector c) {
-  collectExpression(i.cond, c);
-  c.requireEqual(boolType(), i.cond, error(i.cond, "Condition must be boolean"));
-
-  for(s <- i.thenBlock) collectStatement(s, c);
-
-  for(<e, blk> <- i.elseifBlocks) {
-    collectExpression(e, c);
-    c.requireEqual(boolType(), e, error(e, "Condition must be boolean"));
-    for(s <- blk) collectStatement(s, c);
-  }
-
-  for(s <- i.elseBlock) collectStatement(s, c);
+void collect(current: (OrExpr) `<AndExpr expr>`, Collector c) {
+  collect(expr, c);
 }
 
-// ---------------------
-// CondClause
-// ---------------------
-void collectCondClause(CondClause cl, Collector c) {
-  collectExpression(cl.cond, c);
-  c.requireEqual(boolType(), cl.cond, error(cl.cond, "Condition must be boolean"));
-  for(s <- cl.body) collectStatement(s, c);
+void collect(current: (OrExpr) `<OrExpr left> or <AndExpr right>`, Collector c) {
+  c.fact(current, boolType());
+  collect(left, c);
+  collect(right, c);
 }
 
-// ======================================================
-// Loops
-// ======================================================
-void collectLoop(LoopStmt l, Collector c) {
-  switch(l) {
-
-    case forRange(v, fromE, toE, body): {
-      collectExpression(fromE, c);
-      collectExpression(toE, c);
-
-      c.requireEqual(intType(), fromE, error(fromE, "Range start must be int"));
-      c.requireEqual(intType(), toE,   error(toE,   "Range end must be int"));
-
-      c.enterScope(l);
-      c.define(v, variableId(), l, defType(intType()));
-      for (s <- body) {
-        collectStatement(s, c);
-      }
-      c.leaveScope(l);
-    }
-
-    case forIn(v, e, body): {
-      collectExpression(e, c);
-      c.enterScope(l);
-      c.define(v, variableId(), l, defType(unknownType()));
-      for (s <- body) {
-        collectStatement(s, c);
-      }
-      c.leaveScope(l);
-    }
-  }
+void collect(current: (AndExpr) `<CmpExpr expr>`, Collector c) {
+  collect(expr, c);
 }
 
-
-// ======================================================
-// Expressions
-// ======================================================
-void collectExpression(Expression e, Collector c) {
-  switch(e) {
-    case orExpr(oe): collectOr(oe, c);
-  }
+void collect(current: (AndExpr) `<AndExpr left> and <CmpExpr right>`, Collector c) {
+  c.fact(current, boolType());
+  collect(left, c);
+  collect(right, c);
 }
 
-// ======================================================
-// OR
-// ======================================================
-void collectOr(OrExpr e, Collector c) {
-  switch(e) {
-
-    case binaryOr(left, right): {
-      collectOr(left, c);
-      collectAnd(right, c);
-      c.requireEqual(boolType(), e, error(e, "OR must be boolean"));
-    }
-
-    case andExpr(a): {
-      collectAnd(a, c);
-    }
-  }
+void collect(current: (CmpExpr) `<AddExpr expr>`, Collector c) {
+  collect(expr, c);
 }
 
-
-// ======================================================
-// AND
-// ======================================================
-void collectAnd(AndExpr e, Collector c) {
-  switch(e) {
-
-    case binaryAnd(left, right): {
-      collectAnd(left, c);
-      collectCmp(right, c);
-      c.requireEqual(boolType(), e, error(e, "AND must be boolean"));
-    }
-
-    case cmpExpr(ce):
-      collectCmp(ce, c);
-  }
+void collect(current: (CmpExpr) `<AddExpr left> <CmpOp op> <AddExpr right>`, Collector c) {
+  c.fact(current, boolType());
+  collect(left, c);
+  collect(right, c);
 }
 
-// ======================================================
-// Comparison
-// ======================================================
-void collectCmp(CmpExpr e, Collector c) {
-  switch(e) {
-
-    case binaryExpr(left, op, right): {
-      collectAdd(left, c);
-      collectAdd(right, c);
-      c.requireEqual(boolType(), e, warning(e, "Comparison result assumed boolean"));
-    }
-
-    case addExpr(a):
-      collectAdd(a, c);
-  }
+void collect(current: (AddExpr) `<MulExpr expr>`, Collector c) {
+  collect(expr, c);
 }
 
-// ======================================================
-// Add
-// ======================================================
-void collectAdd(AddExpr e, Collector c) {
-  switch(e) {
-
-    case binaryAdd(left, op, right): {
-      collectAdd(left, c);
-      collectMul(right, c);
-      c.requireEqual(floatType(), e, warning(e, "Add assumed numeric"));
-    }
-
-    case mulExpr(m):
-      collectMul(m, c);
-  }
+void collect(current: (AddExpr) `<AddExpr left> <AddOp op> <MulExpr right>`, Collector c) {
+  collect(left, c);
+  collect(right, c);
 }
 
-// ======================================================
-// Mul
-// ======================================================
-void collectMul(MulExpr e, Collector c) {
-  switch(e) {
-
-    case binaryMul(left, op, right): {
-      collectMul(left, c);
-      collectPow(right, c);
-      c.requireEqual(floatType(), e, warning(e, "Mul assumed numeric"));
-    }
-
-    case powExpr(p):
-      collectPow(p, c);
-  }
+void collect(current: (MulExpr) `<PowExpr expr>`, Collector c) {
+  collect(expr, c);
 }
 
-// ======================================================
-// Pow
-// ======================================================
-void collectPow(PowExpr e, Collector c) {
-  switch(e) {
-
-    case binaryPow(left, right): {
-      collectUnary(left, c);
-      collectPow(right, c);
-      c.requireEqual(intType(), e, warning(e, "Pow assumed integer"));
-    }
-
-    case unaryExpr(u):
-      collectUnary(u, c);
-  }
+void collect(current: (MulExpr) `<MulExpr left> <MulOp op> <PowExpr right>`, Collector c) {
+  collect(left, c);
+  collect(right, c);
 }
 
-// ======================================================
-// Unary
-// ======================================================
-void collectUnary(UnaryExpr e, Collector c) {
-  switch(e) {
-
-    case unaryNeg(op): {
-      collectUnary(op, c);
-      c.requireEqual(boolType(), e, error(e, "neg must be boolean"));
-    }
-
-    case unaryMinus(op): {
-      collectUnary(op, c);
-      c.requireEqual(floatType(), e, warning(e, "Unary minus assumed numeric"));
-    }
-
-    case postfix(p):
-      collectPostfix(p, c);
-  }
+void collect(current: (PowExpr) `<UnaryExpr expr>`, Collector c) {
+  collect(expr, c);
 }
 
-// ======================================================
-// Postfix
-// ======================================================
-void collectPostfix(Postfix p, Collector c) {
-  switch(p) {
-
-    case postfixCall(callee, args): {
-      collectPostfix(callee, c);
-      for(a <- args) collectExpression(a, c);
-    }
-
-    case primary(pr):
-      collectPrimary(pr, c);
-  }
+void collect(current: (PowExpr) `<UnaryExpr left> ** <PowExpr right>`, Collector c) {
+  collect(left, c);
+  collect(right, c);
 }
 
-// ======================================================
-// Primary
-// ======================================================
-void collectPrimary(Primary pr, Collector c) {
-  switch(pr) {
-
-    case literalExpr(l):
-      collectLiteral(l, c);
-
-    case varExpr(n):
-      c.use(n, {variableId()});
-
-    case groupExpr(e):
-      collectExpression(e, c);
-
-    case ctorExpr(ctor):
-      collectCtorCall(ctor, c);
-
-    case invExpr(inv):
-      collectInvocation(inv, c);
-  }
+void collect(current: (UnaryExpr) `<Postfix postfixExpr>`, Collector c) {
+  collect(postfixExpr, c);
 }
 
-// ======================================================
-// ConstructorCall
-// ======================================================
-void collectCtorCall(ConstructorCall ctor, Collector c) {
-  for(a <- ctor.args)
-    collectExpression(a, c);
+void collect(current: (UnaryExpr) `neg <UnaryExpr operand>`, Collector c) {
+  collect(operand, c);
 }
 
-// ======================================================
-// Literals
-// ======================================================
-void collectLiteral(Literal lit, Collector c) {
-  switch(lit) {
-    case intLit(_):    c.fact(lit, intType());
-    case floatLit(_):  c.fact(lit, floatType());
-    case boolLit(_):   c.fact(lit, boolType());
-    case charLit(_):   c.fact(lit, charType());
-    case stringLit(_): c.fact(lit, stringType());
-  }
+void collect(current: (UnaryExpr) `- <UnaryExpr operand>`, Collector c) {
+  collect(operand, c);
 }
 
+void collect(current: (Postfix) `<Primary primaryExpr>`, Collector c) {
+  collect(primaryExpr, c);
+}
 
+void collect(current: (Primary) `( <Expression expr> )`, Collector c) {
+  collect(expr, c);
+}
+
+void collect(current: (Primary) `<Literal lit>`, Collector c) {
+  collect(lit, c);
+}
+
+void collect(current: (Primary) `<Id name>`, Collector c) {
+  c.use("<name>", {variableId()});
+}
+
+void collect(current: (Primary) `<ConstructorCall ctor>`, Collector c) {
+  collect(ctor, c);
+}
+
+void collect(current: (Primary) `<Invocation inv>`, Collector c) {
+  collect(inv, c);
+}
+
+// =======================
+// Literal collection
+// =======================
+void collect(current: (Literal) `<Float realValue>`, Collector c) {
+  c.fact(current, floatType());
+}
+
+void collect(current: (Literal) `<Integer intValue>`, Collector c) {
+  c.fact(current, intType());
+}
+
+void collect(current: (Literal) `<BooleanLit boolValue>`, Collector c) {
+  c.fact(current, boolType());
+}
+
+void collect(current: (Literal) `<Char charValue>`, Collector c) {
+  c.fact(current, charType());
+}
+
+void collect(current: (Literal) `<String strValue>`, Collector c) {
+  c.fact(current, stringType());
+}
+
+// =======================
+// ConstructorCall collection
+// =======================
+void collect(current: (ConstructorCall) `sequence [ <{Expression ","}* items> ]`, Collector c) {
+  for (e <- items) collect(e, c);
+}
+
+void collect(current: (ConstructorCall) `tuple ( <{Expression ","}* items> )`, Collector c) {
+  for (e <- items) collect(e, c);
+}
+
+void collect(current: (ConstructorCall) `struct ( <{Expression ","}* args> )`, Collector c) {
+  for (e <- args) collect(e, c);
+}
+
+public TModel typeCheck(Program p) {
+  collect(p);
+}
+
+public TModel collectAndSolve(Tree pt, str modelName = "") {
+  start[Program] parsed = pt;
+  return typeCheck(parsed.top);
+}

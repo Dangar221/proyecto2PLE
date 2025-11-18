@@ -22,6 +22,7 @@ data Type
 // Identificadores con/ sin tipo
 data TypedId
   = typedId(str name, Type typeAnn)
+  | typedIdPrefix(Type typeAnn, str name)
   | untypedId(str name)
   ;
 
@@ -141,6 +142,7 @@ data LoopStmt
 
 data Statement
   = assignStmt(TypedId varName, Expression val)          // variable typed or untyped assignment
+  | typedAssignStmt(Type typeAnn, str varName, Expression val)  // Type Id = Expression form
   | funcCallStmt(FunctionCall call)
   | conditionalStmt(ConditionalStmt ifs)
   | loopStmt(LoopStmt loop)
