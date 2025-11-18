@@ -1,7 +1,28 @@
 module Checker
+
+extend analysis::typepal::TypePal;
+
 import AST;
 import Syntax;
-extend analysis::typepal::TypePal;
+
+// =======================
+// IdRoles personalizados
+// =======================
+data IdRole
+  = dataTypeId()
+  | fieldId()
+  | structId()
+  | variableId()
+  | functionId()
+  | paramId()
+  ;
+
+// =======================
+// ATypes personalizados
+// =======================
+data AType
+  = customType(str name)
+  ;
 
 // =======================
 // Type converter
@@ -62,18 +83,28 @@ void collectModule(Module m, Collector c) {
 void collectDataDecl(DataDecl d, Collector c) {
   switch(d) {
 
-    case dataCtorNoAssign(fields, cons, endName): {
-      c.define(endName, dataTypeId(), d, defType(customType(endName)))
+    case dataNoAssign(fields, body, endName): {  
+      c.define(endName, dataTypeId(), d, defType(customType(endName))); 
       defineFields(fields, c);
-      collectConstructor(cons, endName, c);
+      collectDataBody(body, endName, c);
     }
 
-    case dataCtorWithAssign(assignName, fields, cons, endName): {
-      c.define(assignName, dataTypeId(), d, defType(customType(endName)));
-      c.define(endName,     dataTypeId(), d, defType(customType(endName)));
+    case dataWithAssign(assignName, fields, body, endName): {  
+      c.define(assignName, dataTypeId(), d, defType(customType(assignName)));
+      c.define(endName, dataTypeId(), d, defType(customType(endName)));
       defineFields(fields, c);
-      collectConstructor(cons, endName, c);
+      collectDataBody(body, endName, c);
     }
+  }
+}
+
+// Nueva función para manejar DataBody
+void collectDataBody(DataBody body, str parentType, Collector c) {
+  switch(body) {
+    case consBody(cons):
+      collectConstructor(cons, parentType, c);
+    case funcBody(func):
+      collectFunction(func, c);
   }
 }
 
@@ -97,22 +128,16 @@ void defineFields(list[TypedId] fields, Collector c) {
 void collectConstructor(ConstructorDef cons, str parentType, Collector c) {
   switch(cons) {
     case constructorDef(name, usedFields): {
-
+      
       c.define(name, structId(), cons, defType(customType(parentType)));
-
-      // Validación: cada campo usado debe haber sido declarado
-      set[str] declared = 
-        { n | u <- usedFields, u := typedId(n, _) }
-        + { n | u <- usedFields, u := untypedId(n) };
-
+      
+      // Cada campo usado en el constructor debe existir
       for (u <- usedFields) {
         switch(u) {
           case typedId(n, _):
-            if (n notin declared)
-              c.report(error(cons, "Field <n> not declared in <parentType>"));
+            c.use(n, {fieldId()});
           case untypedId(n):
-            if (n notin declared)
-              c.report(error(cons, "Field <n> not declared in <parentType>"));
+            c.use(n, {fieldId()});
         }
       }
     }
@@ -164,16 +189,33 @@ void collectStatement(Statement s, Collector c) {
     case invokeStmt(inv):
       collectInvocation(inv, c);
 
-    //case iteratorStmt(_, _, _):
-     //;
+    case iteratorStmt(varName, inVars, outVars): {
+      // Define el iterador
+      switch(varName) {
+        case typedId(n, t):
+          c.define(n, variableId(), varName, defType(astTypeToAType(t)));
+        case untypedId(n):
+          c.define(n, variableId(), varName, defType(unknownType()));
+      }
+    }
 
-    case rangeStmtWithVar(_, fromP, toP):
-      collectExpression(fromP, c)
+    case rangeStmtWithVar(varName, fromP, toP): {
+      collectExpression(fromP, c);
       collectExpression(toP, c);
+      
+      // Define la variable del rango
+      switch(varName) {
+        case typedId(n, t):
+          c.define(n, variableId(), varName, defType(astTypeToAType(t)));
+        case untypedId(n):
+          c.define(n, variableId(), varName, defType(unknownType()));
+      }
+    }
 
-    case rangeStmtBare(fromP, toP):
-      collectExpression(fromP, c)
+    case rangeStmtBare(fromP, toP): {
+      collectExpression(fromP, c);
       collectExpression(toP, c);
+    }
   }
 }
 

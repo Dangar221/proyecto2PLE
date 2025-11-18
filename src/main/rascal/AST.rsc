@@ -25,13 +25,17 @@ data TypedId
   | untypedId(str name)
   ;
 
-// Data declarations (con o sin asign)
+// Data declarations - VERSIÓN ACTUALIZADA
 data DataDecl
-  = dataCtorNoAssign(list[TypedId] fields, ConstructorDef cons, str endName)
-  | dataCtorWithAssign(str assignName, list[TypedId] fields, ConstructorDef cons, str endName)
+  = dataNoAssign(list[TypedId] fields, DataBody body, str endName)
+  | dataWithAssign(str assignName, list[TypedId] fields, DataBody body, str endName)
   ;
 
-// Definición de constructor (nombre y lista de campos usados)
+data DataBody
+  = consBody(ConstructorDef cons)
+  | funcBody(FunctionDef func)
+  ;
+
 data ConstructorDef = constructorDef(str name, list[TypedId] fields);
 
 // Definición de función
@@ -140,12 +144,12 @@ data LoopStmt
   ;
 
 data Statement
-  = assignStmt(TypedId varName, Expression val)          // variable typed or untyped assignment
+  = assignStmt(TypedId varName, Expression val)
   | funcCallStmt(FunctionCall call)
   | conditionalStmt(ConditionalStmt ifs)
   | loopStmt(LoopStmt loop)
   | invokeStmt(Invocation inv)
-  | iteratorStmt(str varName, list[str] inVars, list[str] outVars)
-  | rangeStmtWithVar(str varName, Expression fromP, Expression toP)
+  | iteratorStmt(TypedId varName, list[str] inVars, list[str] outVars)  
+  | rangeStmtWithVar(TypedId varName, Expression fromP, Expression toP) 
   | rangeStmtBare(Expression fromP, Expression toP)
   ;

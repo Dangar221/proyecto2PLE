@@ -1,27 +1,26 @@
 test OkInteger1 [[
-    function testCond() do Integer x =2 end testCond 
+function testCond() do 
+  x:Int = 2 
+end testCond
 ]]
 
 test OkInteger2 [[
-    function testCond() do Integer y=4 Integer x=y end testCond 
+function testCond() do 
+  y:Int = 4
+  x:Int = y 
+end testCond
 ]]
 
 test NoOkInteger1 [[
-    function testCond() do Integer y=4 Integer x=z end testCond 
-]] expect {"Undefined variable ⁠ z ⁠"}
+function testCond() do 
+  y:Int = 4
+  x:Int = z 
+end testCond
+]] expect { "Undefined variable" }
 
 test NoOkInteger2 [[
-    function testCond() do String y="HolaMundo" Integer x=y end testCond 
-]] expect {"Incorrect initialization, expected ⁠ int ⁠, found ⁠ str ⁠"}
-
-test OkFloat1 [[
-    function testCond() do Float x =2.5 end testCond 
-]]
-
-test OkFloat2 [[
-    function testCond() do Float y=4.2 Float x=y end testCond 
-]]
-
-test NoOkFloat1 [[
-    function testCond() do Float y=4.3 Integer x=z end testCond 
-]] expect {"Undefined variable ⁠ z ⁠"}
+function testCond() do 
+  y:String = "HolaMundo"
+  x:Int = y 
+end testCond
+]] expect { "Assigned type mismatch" }

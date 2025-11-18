@@ -1,12 +1,12 @@
 module Main
 
-import IO;
-import Syntax;
-import ParseTree;
 import AST;
-import Interpreter;
-import String;
+import IO;
 import Implode;
+import Interpreter;
+import ParseTree;
+import String;
+import Syntax;
 
 void main() {
   println("=== ALU Language Demo ===\n");
@@ -54,7 +54,7 @@ void runProgram(str code) {
     println("Resolving ambiguities...");
     pt = resolveAmb(pt);
     println("Imploding to AST...");
-    AST::Program ast = implodeFromTree(pt.top);
+    AST::Program ast = implodeTree(pt.top);
     println("Executing...");
     evalProgram(ast);
     println("Done!");
