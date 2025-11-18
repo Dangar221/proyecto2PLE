@@ -1,9 +1,9 @@
 module Checker
 
 extend analysis::typepal::TypePal;
-
 import AST;
 import Syntax;
+import ParseTree;
 
 // =======================
 // IdRoles personalizados
@@ -22,6 +22,7 @@ data IdRole
 // =======================
 data AType
   = customType(str name)
+  | unknownType()
   ;
 
 // =======================
@@ -50,12 +51,14 @@ TypePalConfig cfg() = tconfig(
 // =======================
 // Entry point
 // =======================
+
 public TModel typeCheck(Program p) {
-  Tree dummy = emptyTree();
+  Tree dummy = parse(#start[Program], "function dummy() do end dummy");
   Collector c = newCollector("ALU-checker", dummy, cfg());
   collectProgram(p, c);
   return newSolver(dummy, c.run()).run();
 }
+
 
 // ======================================================
 // Program

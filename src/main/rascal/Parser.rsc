@@ -3,12 +3,15 @@ module Parser
 import Syntax;
 import ParseTree;
 import IO;
+import AST; 
+import Implode; 
 
-public Program parseProgram(str code) {
-  return parse(#Program, code);
+public AST::Program parseProgram(str code) {
+  Tree t = parse(#start[Program], code);
+  return implode(#AST::Program, t);
 }
 
-public Program parseFile(str path) {
+public AST::Program parseFile(str path) {
   str code = readFile(|file://<path>|);
   return parseProgram(code);
 }

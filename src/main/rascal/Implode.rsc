@@ -12,3 +12,4 @@ public AST::Program implodeProgram(str code) {
 public AST::Program implodeTree(Tree t) {
   return implode(#AST::Program, t);
 }
+

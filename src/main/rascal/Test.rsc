@@ -10,11 +10,9 @@ import String;
 import List;
 import Message;
 
-// Test helper
 bool runTest(str testName, str code, bool shouldPass, str expectedError) {
     println("\n--- Test: <testName> ---");
     println("Code: <code>");
-    
     try {
         Tree pt = parse(#start[Program], code);
         AST::Program ast = implode(#AST::Program, pt.top);

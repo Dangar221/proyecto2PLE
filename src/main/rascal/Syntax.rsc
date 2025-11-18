@@ -9,11 +9,11 @@ syntax Module
   ; 
 
 syntax Type
-  = "Int"
-  | "Bool"
-  | "Char"
-  | "String"
-  | "Float"
+  = tInt: "Int"
+  | tBool: "Bool"
+  | tChar: "Char"
+  | tString: "String"
+  | tFloat: "Float"
   ;
 
 syntax TypedId
