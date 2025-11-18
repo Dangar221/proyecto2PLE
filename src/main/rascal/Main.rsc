@@ -54,7 +54,7 @@ void runProgram(str code) {
     println("Resolving ambiguities...");
     pt = resolveAmb(pt);
     println("Imploding to AST...");
-    AST::Program ast = implodeFromTree(pt.top);
+    AST::Program ast = implodeTree(pt.top);
     println("Executing...");
     evalProgram(ast);
     println("Done!");

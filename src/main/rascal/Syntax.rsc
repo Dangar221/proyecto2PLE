@@ -4,38 +4,43 @@ module Syntax
 start syntax Program = program: Module+ modules ; 
 
 syntax Module
-= funcDef: FunctionDef
-| dataDecl: Data
-; 
+  = funcDef: FunctionDef
+  | dataDecl: Data
+  ; 
+
 syntax Type
-= "Int"
-| "Bool"
-| "Char"
-| "String"
-| "Float"
-;
+  = tInt: "Int"
+  | tBool: "Bool"
+  | tChar: "Char"
+  | tString: "String"
+  | tFloat: "Float"
+  ;
 
 syntax TypedId
-= typed: Id name ":" Type typeAnn
-| untyped: Id name
-;
+  = typedId: Id name ":" Type typeAnn   
+  | untypedId: Id name                    
+  ;
 
-// Spec-compliant Data declarations
+// Data declarations
+syntax Data 
+  = dataWithAssign: Id assignName "=" "data" "with" {TypedId ","}+ vars DataBody body "end" Id endName
+  | dataNoAssign: "data" "with" {TypedId ","}+ vars DataBody body "end" Id endName 
+  ;
 
-syntax Data = dataWithAssign: Id assignName "=" "data" "with" Variables vars DataBody body "end" Id endName
-| dataNoAssign: "data" "with" Variables vars DataBody body "end" Id endName ;
+syntax DataBody 
+  = consBody: Constructor 
+  | funcBody: FunctionDef
+  ;
 
-syntax DataBody = consBody: Constructor | funcBody: FunctionDef;
-
-syntax Constructor = constructor: Id name "=" "struct" "(" Variables vars ")";
-
-// (legacy DataAbstraction removed)
+syntax Constructor 
+  = constructorDef: Id name "=" "struct" "(" {TypedId ","}+ vars ")" 
+  ;
 
 // Funciones
 syntax FunctionDef =
-functionDef: "function" Id name "(" {Id ","}* params ")"
-"do" Statement* body
-"end" Id endName ; 
+  functionDef: "function" Id name "(" {Id ","}* params ")"
+  "do" Statement* body
+  "end" Id endName ; 
 
 syntax ParameterList = parameterList: Id ("," Id)* ; 
 
@@ -46,13 +51,10 @@ syntax Statement
 | loopStmt: LoopStmt loop 
 | invokeStmt: Invocation inv
 | iteratorStmt: TypedId varName "=" "iterator" "(" {Id ","}* inVars ")" "yielding" "(" {Id ","}* outVars ")"
-| rangeStmtWithVar: TypedId varName "=" "from" Principal fromP "to" Principal toP
-| rangeStmtBare: "from" Principal fromP "to" Principal toP
+| rangeStmtWithVar: TypedId varName "=" "from" Expression fromP "to" Expression toP  
+| rangeStmtBare: "from" Expression fromP "to" Expression toP                          
 ;
 
-
-// Variables list (for invocations/iterators)
-syntax Variables = variables: TypedId ("," TypedId)* ;
 
 // Invocation forms
 syntax Invocation
@@ -161,15 +163,6 @@ syntax Primary
 | invExpr: Invocation inv
 ; 
 
-// Principals (used in ranges, etc.)
-syntax Principal
-= pTrue: "true"
-| pFalse: "false"
-| pChar: Char
-| pInt: Integer
-| pFloat: Float
-| pId: Id
-;
 
 // Literales
 syntax Literal
