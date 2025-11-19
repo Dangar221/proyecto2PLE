@@ -17,7 +17,7 @@ syntax Type
   ;
 
 syntax TypedId
-  = typedId: Id name ":" Type typeAnn   
+  = typedId: Id name ":" Type typeAnn
   | typedIdPrefix: Type typeAnn Id name
   | untypedId: Id name                    
   ;
