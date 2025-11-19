@@ -7,7 +7,7 @@ import ParseTree;
 // ---- Testing ---------------------------------------------------------------
 
 TModel aluTModelForTree(Tree pt){
-    return collectAndSolve(pt, modelName = "alu");
+    return collectAndSolve(pt);
 }
 
 TModel aluTModelFromStr(str text){
