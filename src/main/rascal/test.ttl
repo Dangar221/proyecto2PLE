@@ -179,7 +179,7 @@ end testIfElse
 
 test CondStatement [[
 function testCond() do
-    cond 1 do
+    cond true do
         true -> Int x = 5
     end
 end testCond
@@ -241,3 +241,17 @@ function testUsage() do
     Int y = x
 end testUsage
 ]]
+
+test OkTypedIdColon [[
+function testTypedId() do
+    x: Int = 5
+    y: Bool = true
+end testTypedId
+]]
+
+test TypeMismatchTypedIdColon [[
+function testTypedIdMismatch() do
+    x: Int = true
+end testTypedIdMismatch
+]]
+expect { "Assigned type mismatch" }

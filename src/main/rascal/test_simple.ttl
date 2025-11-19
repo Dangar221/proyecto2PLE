@@ -1,0 +1,17 @@
+test OkIntAssign [[
+function main() do
+    Int x = 2
+end main
+]]
+
+test OkBoolAssign [[
+function main() do
+    Bool b = true
+end main
+]]
+
+test OkStringAssign [[
+function main() do
+    String s = "hello"
+end main
+]]
