@@ -45,18 +45,17 @@ syntax FunctionDef =
 
 syntax ParameterList = parameterList: Id ("," Id)* ; 
 
-// Sentencias
+// Sentencias - NOMBRES DE CAMPOS ÚNICOS
 syntax Statement
-= assignStmt: TypedId varName "=" Expression val
-| typedAssignStmt: Type typeAnn Id varName "=" Expression val
+= assignStmt: TypedId lhs "=" Expression val
+| typedAssignStmt: Type typeAnn Id varId "=" Expression val
 | conditionalStmt: ConditionalStmt ifs 
 | loopStmt: LoopStmt loop 
 | invokeStmt: Invocation inv
-| iteratorStmt: TypedId varName "=" "iterator" "(" {Id ","}* inVars ")" "yielding" "(" {Id ","}* outVars ")"
-| rangeStmtWithVar: TypedId varName "=" "from" Expression fromP "to" Expression toP  
+| iteratorStmt: TypedId iterVar "=" "iterator" "(" {Id ","}* inVars ")" "yielding" "(" {Id ","}* outVars ")"
+| rangeStmtWithVar: TypedId rangeVar "=" "from" Expression fromP "to" Expression toP  
 | rangeStmtBare: "from" Expression fromP "to" Expression toP                          
 ;
-
 
 // Invocation forms
 syntax Invocation
@@ -69,8 +68,8 @@ syntax DataConstruction
 = dataConstruction: ConstructorCall ; 
 
 syntax ConstructorCall =
-ctorCall: "sequence" "[" {Expression ","}* "]"
-| ctorCall: "tuple" "(" {Expression ","}* ")"
+ctorCall: "sequence" "[" {Expression ","}* items "]"
+| ctorCall: "tuple" "(" {Expression ","}* elements ")"
 | ctorCall: "struct" "(" {Expression ","}* args ")" ; 
 
 syntax NamedArg = namedArg: Id name ":" Expression expr ; 
@@ -91,7 +90,6 @@ syntax CondStmt =
 condStmt: "cond" Expression cond "do" CondClause+ clauses "end" ; 
 
 syntax CondClause = condClause: Expression cond "-\>" Statement+ body ;
-
 
 // Bucles
 syntax LoopStmt =
@@ -165,7 +163,6 @@ syntax Primary
 | invExpr: Invocation inv
 ; 
 
-
 // Literales
 syntax Literal
   = floatLit: Float realValue
@@ -214,13 +211,12 @@ lexical StringContent
 | ![\"\\]
 ; 
 
-
 // Palabras reservadas 
 keyword Reserved =
 "data" | "with" | "rep" | "struct" | "function" | "do" | "end"
 | "if" | "then" | "elseif" | "else" | "cond" | "for" | "from" | "to" | "in"
 | "iterator" | "yielding" | "sequence" | "tuple"
-| "and" | "or" | "neg" | "true" | "false" ;
+| "and" | "or" | "neg" | "true" | "false" | "Int" | "Bool" | "Char" | "String" | "Float" ;
 
 // Espacios y comentarios
 layout Layout = WhitespaceOrComment* !>> [\ \t\n\r#];
@@ -230,4 +226,4 @@ lexical WhitespaceOrComment
 | Comment
 ; 
 
-lexical Comment = "#" ![\n\r]* ; 
+lexical Comment = "#" ![\n\r]* ;

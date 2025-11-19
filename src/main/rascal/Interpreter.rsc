@@ -7,6 +7,9 @@ import util::Math;
 
 alias Env = map[str, value];
 
+// ========================================
+// FUNCIÓN PRINCIPAL - evalProgram
+// ========================================
 public void evalProgram(Program p) {
   Env env = ();
   for (m <- p.modules) {
@@ -16,9 +19,8 @@ public void evalProgram(Program p) {
 
 public void evalModule(Module m, Env env) {
   switch (m) {
-    case dataDef(_): println("Data definitions not executed yet.");
-    case funcDef(f): evalFunction(f, env);
     case dataDecl(_): println("Data declaration parsed (no runtime yet).");
+    case funcDef(f): evalFunction(f, env);
   }
 }
 
@@ -28,50 +30,65 @@ public void evalFunction(FunctionDef f, Env env) {
   for (s <- f.body) {
     localEnv = evalStatement(s, localEnv);
   }
-  
   println("End of function: <f.name>");
-  
-
 }
 
-//Evaluación de Sentencias
-
+// ========================================
+// Evaluación de Sentencias
+// ========================================
 public Env evalStatement(Statement s, Env env) {
   switch (s) {
-    case assignStmt(varName, val): { // Asignación
+    // assignStmt(TypedId lhs, Expression val)
+    case assignStmt(lhs, val): { 
+      str varName = extractVarName(lhs);
       value v = evalExpression(val, env);
       env += (varName: v);
-      println("  <varName> = <v>");
+      println("  <varName> = <v>");
       return env;
     }
     
-    case conditionalStmt(i): return evalConditional(i, env); // Condicional If
-    case loopStmt(l): return evalLoop(l, env); // Bucles
+    // typedAssignStmt(Type typeAnn, str varId, Expression val)
+    case typedAssignStmt(typeAnn, varId, val): {
+      value v = evalExpression(val, env);
+      env += (varId: v);
+      println("  <varId> : <typeAnn> = <v>");
+      return env;
+    }
+    
+    case conditionalStmt(i): return evalConditional(i, env);
+    case loopStmt(l): return evalLoop(l, env);
     
     case funcCallStmt(call): { 
       evalFunctionCall(call, env);
       return env;
     }
+    
     case invokeStmt(inv): {
       println("Invocation not executed yet: <inv>");
       return env;
     }
-    case iteratorStmt(varName, inVars, outVars): {
-  // Stub: store as list of lists representing iterator signature
-  env += (varName: [inVars, outVars]);
+    
+    // iteratorStmt(TypedId iterVar, list[str] inVars, list[str] outVars)
+    case iteratorStmt(iterVar, inVars, outVars): {
+      str varName = extractVarName(iterVar);
+      env += (varName: [inVars, outVars]);
       println("  iterator <varName>(<inVars>) yielding (<outVars>)");
       return env;
     }
-    case rangeStmtWithVar(varName, fromP, toP): {
-      value fromV = principalValue(fromP, env);
-      value toV = principalValue(toP, env);
+    
+    // rangeStmtWithVar(TypedId rangeVar, Expression fromP, Expression toP)
+    case rangeStmtWithVar(rangeVar, fromP, toP): {
+      str varName = extractVarName(rangeVar);
+      value fromV = evalExpression(fromP, env);
+      value toV = evalExpression(toP, env);
       env += (varName: [fromV, toV]);
       println("  range <varName> = from <fromV> to <toV>");
       return env;
     }
+    
     case rangeStmtBare(fromP, toP): {
-      value fromV = principalValue(fromP, env);
-      value toV = principalValue(toP, env);
+      value fromV = evalExpression(fromP, env);
+      value toV = evalExpression(toP, env);
       println("  range from <fromV> to <toV>");
       return env;
     }
@@ -83,28 +100,27 @@ public Env evalStatement(Statement s, Env env) {
   }
 }
 
-public value principalValue(Principal p, Env env) {
-  switch (p) {
-    case pTrue(): return true;
-    case pFalse(): return false;
-    case pChar(c): return c;
-    case pInt(i): return i;
-    case pFloat(r): return r;
-    case pId(name): return (name in env) ? env[name] : 0;
+// ========================================
+// Helper: Extraer nombre de variable desde TypedId
+// ========================================
+public str extractVarName(TypedId tid) {
+  switch (tid) {
+    case typedId(name, _): return name;
+    case typedIdPrefix(_, name): return name;
+    case untypedId(name): return name;
   }
-  return 0;
+  return "unknown";
 }
 
+// ========================================
+// Evaluación de Condicionales
+// ========================================
 public Env evalConditional(ConditionalStmt c, Env env) {
   switch (c) {
     case ifStmt(i): return evalIf(i, env);
-    
-
     case condStmt(cs): {
-
       Env localEnv = env;
       for (CondClause clause <- cs.clauses) {
-
         if (toBool(evalExpression(clause.cond, env))) {
           localEnv = evalBlock(clause.body, localEnv); 
           return localEnv; 
@@ -130,16 +146,17 @@ public Env evalIf(IfStmt i, Env env) {
   return evalBlock(i.elseBlock, env);
 }
 
-
+// ========================================
+// Evaluación de Bucles
+// ========================================
 public Env evalLoop(LoopStmt l, Env env) {
   switch (l) {
-    case forRange(v, fromExpr, toExpr, body): { // Bucle For Range
+    case forRange(v, fromExpr, toExpr, body): {
       int startVal = asInt(evalExpression(fromExpr, env));
       int endVal = asInt(evalExpression(toExpr, env));
- 
       Env loopEnv = env; 
       
-      for (i <- [startVal .. endVal]) {
+      for (i <- [startVal .. endVal + 1]) {
         Env iterationEnv = loopEnv + (v: i); 
         loopEnv = evalBlock(body, iterationEnv);
       }
@@ -148,7 +165,6 @@ public Env evalLoop(LoopStmt l, Env env) {
     
     case forIn(v, e, body): { 
       value seq = evalExpression(e, env);
-      
       Env loopEnv = env; 
       
       if (list[value] lst := seq) {
@@ -164,17 +180,16 @@ public Env evalLoop(LoopStmt l, Env env) {
   throw "Unknown loop type";
 }
 
-
 public Env evalBlock(list[Statement] body, Env env) {
-
   for (s <- body) {
     env = evalStatement(s, env);
   }
   return env;
 }
 
-//Evaluación de Expresiones
-
+// ========================================
+// Evaluación de Expresiones
+// ========================================
 public value evalExpression(Expression e, Env env) {
   switch (e) {
     case orExpr(oe): return evalOrExpr(oe, env);
@@ -286,13 +301,12 @@ public value evalUnaryExpr(UnaryExpr e, Env env) {
 public value evalPostfix(Postfix e, Env env) {
   switch (e) {
     case postfixCall(primary(varExpr(name)), args): {
-      // Treat tuple/struct as constructor calls when parsed as function style
-      if (name == "tuple" || name == "struct") {
+      if (name == "tuple" || name == "struct" || name == "sequence") {
         list[value] out = [];
         for (a <- args) out += evalExpression(a, env);
         return out;
       }
-      println("Function call not yet implemented");
+      println("Function call not yet implemented: <name>");
       return 0;
     }
     case primary(primaryExpr):
@@ -309,13 +323,10 @@ public value evalPrimary(Primary e, Env env) {
       return (name in env) ? env[name] : 0;
     case groupExpr(expr):
       return evalExpression(expr, env);
-    
-
     case ctorExpr(ctor): {
       return evalConstructorCall(ctor, env);
     }
-    case AST::invExpr(inv): {
-      // Invocation used in expression position: stub return 0 for now
+    case invExpr(inv): {
       println("Invocation in expression: <inv>");
       return 0;
     }
@@ -323,37 +334,36 @@ public value evalPrimary(Primary e, Env env) {
   return 0;
 }
 
-
 public value evalConstructorCall(ConstructorCall ctor, Env env) {
-    list[value] resultList = [];
-    
-    for (argExpr <- ctor.args) {
-        resultList += evalExpression(argExpr, env);
-    }
-    
-    return resultList;
+  list[value] resultList = [];
+  for (argExpr <- ctor.args) {
+    resultList += evalExpression(argExpr, env);
+  }
+  return resultList;
 }
 
-public value evalFunctionCall(FunctionCall _call, Env _env) {
-  println("Function call not implemented: ()");
+public value evalFunctionCall(FunctionCall call, Env env) {
+  println("Function call not implemented: <call.name>()");
   return 0;
 }
 
-//Evaluación de Literales
-
+// ========================================
+// Evaluación de Literales
+// ========================================
 public value evalLiteral(Literal l) {
   switch (l) {
     case intLit(intValue): return intValue;
     case floatLit(realValue): return realValue;
-    case boolLit(boolValue): return boolValue == "true";
+    case boolLit(boolValue): return boolValue;
     case charLit(charValue): return charValue;
     case stringLit(strValue): return strValue;
   }
   throw "Unknown literal type";
 }
 
-//Utilidades de Conversión de Tipos
-
+// ========================================
+// Utilidades de Conversión de Tipos
+// ========================================
 public bool toBool(value v) {
   if (bool b := v) return b;
   if (int i := v) return i != 0;
@@ -377,5 +387,4 @@ public int asInt(value v) {
 
 public int toInt(real r) {
   return floor(r); 
-  
 }

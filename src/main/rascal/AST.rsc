@@ -26,10 +26,16 @@ data TypedId
   | untypedId(str name)
   ;
 
-// Data declarations (con o sin asign)
+// Data declarations 
 data DataDecl
-  = dataCtorNoAssign(list[TypedId] fields, ConstructorDef cons, str endName)
-  | dataCtorWithAssign(str assignName, list[TypedId] fields, ConstructorDef cons, str endName)
+  = dataNoAssign(list[TypedId] fields, DataBody body, str endName)
+  | dataWithAssign(str assignName, list[TypedId] fields, DataBody body, str endName)
+  ;
+
+// AGREGAR DataBody
+data DataBody
+  = consBody(ConstructorDef cons)
+  | funcBody(FunctionDef func)
   ;
 
 // Definición de constructor (nombre y lista de campos usados)
@@ -140,14 +146,15 @@ data LoopStmt
   | forIn(str var, Expression expr, list[Statement] body)
   ;
 
+// Statements con nombres consistentes
 data Statement
-  = assignStmt(TypedId varName, Expression val)          // variable typed or untyped assignment
-  | typedAssignStmt(Type typeAnn, str varName, Expression val)  // Type Id = Expression form
+  = assignStmt(TypedId lhs, Expression val)                    
+  | typedAssignStmt(Type typeAnn, str varId, Expression val)     
   | funcCallStmt(FunctionCall call)
   | conditionalStmt(ConditionalStmt ifs)
   | loopStmt(LoopStmt loop)
   | invokeStmt(Invocation inv)
-  | iteratorStmt(str iterVar, list[str] inVars, list[str] outVars)
-  | rangeStmtWithVar(str rangeVar, Expression fromP, Expression toP)
+  | iteratorStmt(TypedId iterVar, list[str] inVars, list[str] outVars)
+  | rangeStmtWithVar(TypedId rangeVar, Expression fromP, Expression toP)
   | rangeStmtBare(Expression fromP, Expression toP)
   ;
