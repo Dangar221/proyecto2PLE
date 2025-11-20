@@ -38,17 +38,24 @@ public void evalFunction(FunctionDef f, Env env) {
 // ========================================
 public Env evalStatement(Statement s, Env env) {
   switch (s) {
-    // assignStmt(TypedId lhs, Expression val)
+    // assignStmt(str lhs, Expression val)
     case assignStmt(lhs, val): { 
-      str varName = extractVarName(lhs);
       value v = evalExpression(val, env);
-      env += (varName: v);
-      println("  <varName> = <v>");
+      env += (lhs: v);
+      println("  <lhs> = <v>");
       return env;
     }
     
     // typedAssignStmt(Type typeAnn, str varId, Expression val)
     case typedAssignStmt(typeAnn, varId, val): {
+      value v = evalExpression(val, env);
+      env += (varId: v);
+      println("  <varId> : <typeAnn> = <v>");
+      return env;
+    }
+    
+    // colonTypedAssignStmt(str varId, Type typeAnn, Expression val)
+    case colonTypedAssignStmt(varId, typeAnn, val): {
       value v = evalExpression(val, env);
       env += (varId: v);
       println("  <varId> : <typeAnn> = <v>");
@@ -68,21 +75,19 @@ public Env evalStatement(Statement s, Env env) {
       return env;
     }
     
-    // iteratorStmt(TypedId iterVar, list[str] inVars, list[str] outVars)
+    // iteratorStmt(str iterVar, list[str] inVars, list[str] outVars)
     case iteratorStmt(iterVar, inVars, outVars): {
-      str varName = extractVarName(iterVar);
-      env += (varName: [inVars, outVars]);
-      println("  iterator <varName>(<inVars>) yielding (<outVars>)");
+      env += (iterVar: [inVars, outVars]);
+      println("  iterator <iterVar>(<inVars>) yielding (<outVars>)");
       return env;
     }
     
-    // rangeStmtWithVar(TypedId rangeVar, Expression fromP, Expression toP)
+    // rangeStmtWithVar(str rangeVar, Expression fromP, Expression toP)
     case rangeStmtWithVar(rangeVar, fromP, toP): {
-      str varName = extractVarName(rangeVar);
       value fromV = evalExpression(fromP, env);
       value toV = evalExpression(toP, env);
-      env += (varName: [fromV, toV]);
-      println("  range <varName> = from <fromV> to <toV>");
+      env += (rangeVar: [fromV, toV]);
+      println("  range <rangeVar> = from <fromV> to <toV>");
       return env;
     }
     
@@ -98,18 +103,6 @@ public Env evalStatement(Statement s, Env env) {
       return env;
     }
   }
-}
-
-// ========================================
-// Helper: Extraer nombre de variable desde TypedId
-// ========================================
-public str extractVarName(TypedId tid) {
-  switch (tid) {
-    case typedId(name, _): return name;
-    case typedIdPrefix(_, name): return name;
-    case untypedId(name): return name;
-  }
-  return "unknown";
 }
 
 // ========================================

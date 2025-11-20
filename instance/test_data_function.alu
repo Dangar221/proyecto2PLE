@@ -1,5 +1,9 @@
-id = data with x, y function f() do x = x end f end id
+Counter: Int = data with value: Int
+  function increment() do
+    value = value
+  end increment
+end Counter
 
-function useDataFunc() do
-  # Parsing only; DataBody with Function
-end useDataFunc
+function useCounter() do
+  Int c = 0
+end useCounter

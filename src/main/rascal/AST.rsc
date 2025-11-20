@@ -3,45 +3,43 @@ module AST
 // Program
 data Program = program(list[Module] modules);
 
-// Módulo: funciones o declaraciones de datos
+// Módulo
 data Module
   = funcDef(FunctionDef func)
   | dataDecl(DataDecl decl)
   ;
 
-// Tipos del lenguaje (para anotaciones explícitas)
+// Tipos
 data Type
   = tInt()
   | tBool()
   | tChar()
   | tString()
   | tFloat()
-  | tUser(str name)    // tipo definido por el usuario (nombre)
+  | tUser(str name)
   ;
 
-// Identificadores con/ sin tipo
+// TypedId ya no se usa en Statement pero sí en Data
 data TypedId
   = typedId(str name, Type typeAnn)
   | typedIdPrefix(Type typeAnn, str name)
   | untypedId(str name)
   ;
 
-// Data declarations 
+// Data declarations CON TIPO
 data DataDecl
-  = dataNoAssign(list[TypedId] fields, DataBody body, str endName)
-  | dataWithAssign(str assignName, list[TypedId] fields, DataBody body, str endName)
+  = dataNoAssign(Type dataType, str name, list[TypedId] fields, DataBody body, str endName)
+  | dataWithAssign(str assignName, Type dataType, list[TypedId] fields, DataBody body, str endName)
   ;
 
-// AGREGAR DataBody
 data DataBody
   = consBody(ConstructorDef cons)
   | funcBody(FunctionDef func)
   ;
 
-// Definición de constructor (nombre y lista de campos usados)
 data ConstructorDef = constructorDef(str name, list[TypedId] fields);
 
-// Definición de función
+// Función
 data FunctionDef = functionDef(
   str name,
   list[str] params,
@@ -58,7 +56,7 @@ data Literal
   | stringLit(str strValue)
   ;
 
-// Expresiones (jerarquía)
+// Expresiones
 data Expression = orExpr(OrExpr expr);
 
 data OrExpr
@@ -102,7 +100,6 @@ data Primary
   | invExpr(Invocation inv)
   ;
 
-// Invocaciones y llamadas
 data FunctionCall = funcCall(str name, list[Expression] args);
 
 data Invocation
@@ -110,15 +107,8 @@ data Invocation
   | methodInvoke(str recv, str method, list[str] vars)
   ;
 
-// Construcciones (sequence/tuple/struct) -> representadas como ConstructorCall en AST
-data ConstructorCall
-  = ctorCall(list[Expression] args)
-  ;
+data ConstructorCall = ctorCall(list[Expression] args);
 
-// Named arg
-data NamedArg = namedArg(str name, Expression expr);
-
-// Sentencias / statements
 data ConditionalStmt
   = ifStmt(IfStmt ifs)
   | condStmt(CondStmt cond)
@@ -146,15 +136,16 @@ data LoopStmt
   | forIn(str var, Expression expr, list[Statement] body)
   ;
 
-// Statements con nombres consistentes
+// Statements ACTUALIZADOS
 data Statement
-  = assignStmt(TypedId lhs, Expression val)                    
-  | typedAssignStmt(Type typeAnn, str varId, Expression val)     
+  = assignStmt(str lhs, Expression val)                           // x = 5
+  | typedAssignStmt(Type typeAnn, str varId, Expression val)      // Int x = 5
+  | colonTypedAssignStmt(str varId, Type typeAnn, Expression val) // x: Int = 5
   | funcCallStmt(FunctionCall call)
   | conditionalStmt(ConditionalStmt ifs)
   | loopStmt(LoopStmt loop)
   | invokeStmt(Invocation inv)
-  | iteratorStmt(TypedId iterVar, list[str] inVars, list[str] outVars)
-  | rangeStmtWithVar(TypedId rangeVar, Expression fromP, Expression toP)
+  | iteratorStmt(str iterVar, list[str] inVars, list[str] outVars)
+  | rangeStmtWithVar(str rangeVar, Expression fromP, Expression toP)
   | rangeStmtBare(Expression fromP, Expression toP)
   ;

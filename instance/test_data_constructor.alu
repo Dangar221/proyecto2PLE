@@ -1,5 +1,8 @@
-data with a, b point = struct(a, b) end point
+Point: Int = data with x: Int, y: Int
+  new_Point = struct(x: Int, y: Int)
+end Point
 
 function usePoint() do
-  # No runtime semantics, just checking parse/implode
+  # Crear un punto
+  Int p = struct(1, 2)
 end usePoint

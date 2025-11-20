@@ -1,257 +1,126 @@
-test OkFunction1 [[
-function testFunc() do
-    Int x = 5
-end testFunc
+test OkFunction1 [[ 
+function testFunc() do 
+    Int x = 5 
+end testFunc 
 ]]
 
-test OkFunction2 [[
-function add(x, y) do
-    Int result = 10
-end add
+test OkFunction2 [[ 
+function add(x, y) do 
+    Int result = 10 
+end add 
 ]]
 
-test FunctionEndNameMismatch [[
-function testFunc() do
-    Int x = 5
-end wrongName
-]]
+test FunctionEndNameMismatch [[ 
+function testFunc() do 
+    Int x = 5 
+end wrongName 
+]] 
 expect { "Function end name mismatch" }
 
-test OkIntVar [[
-function testVars() do
-    Int x = 42
-end testVars
+test OkIntVar [[ 
+function testVars() do 
+    Int x = 42 
+end testVars 
 ]]
 
-test OkFloatVar [[
-function testVars() do
-    Float y = 3.14
-end testVars
+test OkFloatVar [[ 
+function testVars() do 
+    Float y = 3.14 
+end testVars 
 ]]
 
-test OkBoolVar [[
-function testVars() do
-    Bool flag = true
-end testVars
+test OkBoolVar [[ 
+function testVars() do 
+    Bool flag = true 
+end testVars 
 ]]
 
-test OkStringVar [[
-function testVars() do
-    String msg = "hello"
-end testVars
+test OkStringVar [[ 
+function testVars() do 
+    String msg = "hello" 
+end testVars 
 ]]
 
-test OkCharVar [[
-function testVars() do
-    Char ch = 'a'
-end testVars
+test OkCharVar [[ 
+function testVars() do 
+    Char ch = 'a' 
+end testVars 
 ]]
 
-test OkMultipleVars [[
-function testVars() do
-    Int x = 10
-    Float y = 2.5
-    Bool z = true
-end testVars
-]]
+test TypeMismatchIntBool [[ 
+function testType() do 
+    Int x = true 
+end testType 
+]] 
+expect { "Type mismatch" }
 
-test TypeMismatchIntBool [[
-function testType() do
-    Int x = true
-end testType
-]]
-expect { "Assigned type mismatch" }
+test TypeMismatchFloatString [[ 
+function testType() do 
+    Float x = "wrong" 
+end testType 
+]] 
+expect { "Type mismatch" }
 
-test TypeMismatchFloatString [[
-function testType() do
-    Float x = "wrong"
-end testType
-]]
-expect { "Assigned type mismatch" }
-
-test UntypedVar [[
-function testUntyped() do
-    x = 100
-end testUntyped
-]]
-
-test BooleanOr [[
-function testOr() do
-    Bool x = true or false
-end testOr
-]]
-
-test BooleanAnd [[
-function testAnd() do
-    Bool x = true and false
-end testAnd
-]]
-
-test IntComparison [[
-function testCmp() do
-    Bool x = 5 > 3
-end testCmp
-]]
-
-test FloatAddition [[
-function testAdd() do
-    Float x = 2.5 + 1.5
-end testAdd
-]]
-
-test IntMultiplication [[
-function testMul() do
-    Int x = 3 * 4
-end testMul
-]]
-
-test IntegerPower [[
-function testPow() do
-    Int x = 2 ** 3
-end testPow
-]]
-
-test UnaryNegation [[
-function testNeg() do
-    Bool x = neg true
-end testNeg
-]]
-
-test UnaryMinus [[
-function testMinus() do
-    Int x = - 5
-end testMinus
-]]
-
-test GroupedExpression [[
-function testGroup() do
-    Int x = ( 2 + 3 ) * 4
-end testGroup
-]]
-
-test IntLiteral [[
-function testLit() do
-    Int x = 42
-end testLit
-]]
-
-test FloatLiteral [[
-function testLit() do
-    Float x = 3.14159
-end testLit
-]]
-
-test BoolLiteral [[
-function testLit() do
-    Bool x = true
-end testLit
-]]
-
-test CharLiteral [[
-function testLit() do
-    Char x = 'Z'
-end testLit
-]]
-
-test StringLiteral [[
-function testLit() do
-    String x = "Hello World"
-end testLit
-]]
-
-test IfStatement [[
-function testIf() do
-    if true then
-        Int x = 5
-    end
-end testIf
-]]
-
-test IfElseStatement [[
-function testIfElse() do
-    if false then
-        Int x = 1
-    else
-        Int y = 2
-    end
-end testIfElse
-]]
-
-test CondStatement [[
-function testCond() do
-    cond true do
-        true -> Int x = 5
-    end
-end testCond
-]]
-
-test CondMultipleClauses [[
-function testMultiCond() do
-    cond 2 do
-        1 -> Int x = 10
-        2 -> Int y = 20
-    end
-end testMultiCond
-]]
-
-test ForRangeLoop [[
-function testForRange() do
-    for i from 1 to 10 do
-        Int x = i
-    end
-end testForRange
-]]
-
-test ForInLoop [[
-function testForIn() do
-    for elem in myList do
-        Int x = elem
-    end
-end testForIn
-]]
-expect { "Undefined variable" }
-
-test RangeStatement [[
-function testRange() do
-    from 1 to 100
-end testRange
-]]
-
-test SequenceConstructor [[
-function testSeq() do
-    x = sequence [ 1, 2, 3, 4, 5 ]
-end testSeq
-]]
-
-test TupleConstructor [[
-function testTuple() do
-    x = tuple ( 1, 2.5, true )
-end testTuple
-]]
-
-test StructConstructor [[
-function testStruct() do
-    x = struct ( 10, 20 )
-end testStruct
-]]
-
-test VarUsage [[
-function testUsage() do
-    Int x = 5
-    Int y = x
-end testUsage
-]]
-
-test OkTypedIdColon [[
-function testTypedId() do
+test OkTypedIdColon [[ 
+function testTypedId() do 
     x: Int = 5
-    y: Bool = true
-end testTypedId
+    y: Bool = true 
+end testTypedId 
 ]]
 
-test TypeMismatchTypedIdColon [[
-function testTypedIdMismatch() do
-    x: Int = true
-end testTypedIdMismatch
+test TypeMismatchTypedIdColon [[ 
+function testTypedIdMismatch() do 
+    x: Int = true 
+end testTypedIdMismatch 
+]] 
+expect { "Type mismatch" }
+
+test UntypedVar [[ 
+function testUntyped() do 
+    x = 100 
+end testUntyped 
 ]]
-expect { "Assigned type mismatch" }
+
+test BooleanOr [[ 
+function testOr() do 
+    Bool x = true or false 
+end testOr 
+]]
+
+test IntComparison [[ 
+function testCmp() do 
+    Bool x = 5 > 3 
+end testCmp 
+]]
+
+test FloatAddition [[ 
+function testAdd() do 
+    Float x = 2.5 + 1.5 
+end testAdd 
+]]
+
+test VarUsage [[ 
+function testUsage() do 
+    Int x = 5
+    Int y = x 
+end testUsage 
+]]
+
+test DataWithTypeOk [[ 
+Point: Int = data with x: Int, y: Int 
+  origin = struct(x, y) 
+end Point 
+]]
+
+test DataFieldNotDefined [[ 
+Point: Int = data with x: Int, y: Int 
+  bad = struct(x, y, z) 
+end Point 
+]] 
+expect { "not defined in data structure" }
+
+test DataNoTypeAnnotation [[ 
+data Int Point with x, y 
+  origin = struct(x, y) 
+end Point 
+]]

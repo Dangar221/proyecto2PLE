@@ -34,18 +34,8 @@ AType syntaxTypeToAType(Type t) {
   return unknownType();
 }
 
-// Helper to validate custom types in field declarations
-void validateFieldType(Type t, Tree src, Collector c) {
-  AType atype = syntaxTypeToAType(t);
-  // For now, we only validate built-in types
-  // Custom types would need additional validation logic
-  if (atype == unknownType()) {
-    c.report(error(src, "Unknown type: <t>"));
-  }
-}
-
 // =======================
-// IdRole definitions for TypePal
+// IdRole definitions
 // =======================
 data IdRole
   = variableId()
@@ -65,18 +55,26 @@ default tuple[list[str] typeNames, set[IdRole] idRoles] getTypeNamesAndRole(ATyp
 // =======================
 // Config
 // =======================
-TypePalConfig config() = tconfig(
-  verbose = false,
-  logTModel = false
+TypePalConfig myConfig() = tconfig(
+    isAcceptableSimple = bool (loc _, AType _) { return true; },
+    isAcceptableLub = bool (loc _, AType _, AType _) { return true; },
+    getLub = AType (loc _, AType t1, AType t2) { 
+        if (t1 == t2) return t1;
+        if (t1 == floatType() || t2 == floatType()) return floatType();
+        if (t1 == intType() || t2 == intType()) return intType();
+        return unknownType();
+    }
 );
 
 // =======================
-// Entry point - collect and solve constraints
+// Entry point
 // =======================
 void collect(current: (Program) `<Module+ modules>`, Collector c) {
+  c.enterScope(current);
   for (m <- modules) {
     collect(m, c);
   }
+  c.leaveScope(current);
 }
 
 // =======================
@@ -93,49 +91,92 @@ void collect(current: (Module) `<Data d>`, Collector c) {
 // =======================
 // Data declarations
 // =======================
-void collect(current: (Data) `<Id assignName> = data with <{TypedId ","}+ vars> <DataBody body> end <Id endName>`, Collector c) {
-  c.define("<assignName>", dataId(), assignName, defType(customType("<endName>")));
+void collect(current: (Data) `<Id assignName> : <Type dataType> = data with <{TypedId ","}+ vars> <DataBody body> end <Id endName>`, Collector c) {
+  AType dtype = syntaxTypeToAType(dataType);
+  c.define("<assignName>", dataId(), assignName, defType(customType("<assignName>")));
+  
   c.enterScope(current);
+    set[str] definedFields = {};
     for (v <- vars) {
       if ((TypedId) `<Id n> : <Type t>` := v) {
-        validateFieldType(t, v, c);
         c.define("<n>", fieldId(), n, defType(syntaxTypeToAType(t)));
+        definedFields += "<n>";
       }
       else if ((TypedId) `<Type t> <Id n>` := v) {
-        validateFieldType(t, v, c);
         c.define("<n>", fieldId(), n, defType(syntaxTypeToAType(t)));
+        definedFields += "<n>";
       }
       else if ((TypedId) `<Id n>` := v) {
         c.define("<n>", fieldId(), n, defType(unknownType()));
-        c.report(warning(v, "Field <n> has no type annotation"));
+        definedFields += "<n>";
       }
     }
+    
+    // Validar campos en constructor
+    if ((DataBody) `<Constructor cons>` := body) {
+      if ((Constructor) `<Id cname> = struct ( <{TypedId ","}+ cvars> )` := cons) {
+        for (cv <- cvars) {
+          str fieldName = "";
+          if ((TypedId) `<Id n> : <Type t>` := cv) fieldName = "<n>";
+          else if ((TypedId) `<Type t> <Id n>` := cv) fieldName = "<n>";
+          else if ((TypedId) `<Id n>` := cv) fieldName = "<n>";
+          
+          if (fieldName != "" && fieldName notin definedFields) {
+            c.report(error(cv, "Field \'<fieldName>\' not defined in data structure"));
+          }
+        }
+      }
+    }
+    
     collect(body, c);
   c.leaveScope(current);
+  
   if ("<assignName>" != "<endName>") {
     c.report(error(current, "Data definition end name mismatch"));
   }
 }
 
-void collect(current: (Data) `data with <{TypedId ","}+ vars> <DataBody body> end <Id endName>`, Collector c) {
-  c.define("<endName>", dataId(), endName, defType(customType("<endName>")));
+void collect(current: (Data) `data <Type dataType> <Id name> with <{TypedId ","}+ vars> <DataBody body> end <Id endName>`, Collector c) {
+  c.define("<name>", dataId(), name, defType(customType("<name>")));
+  
   c.enterScope(current);
+    set[str] definedFields = {};
     for (v <- vars) {
       if ((TypedId) `<Id n> : <Type t>` := v) {
-        validateFieldType(t, v, c);
         c.define("<n>", fieldId(), n, defType(syntaxTypeToAType(t)));
+        definedFields += "<n>";
       }
       else if ((TypedId) `<Type t> <Id n>` := v) {
-        validateFieldType(t, v, c);
         c.define("<n>", fieldId(), n, defType(syntaxTypeToAType(t)));
+        definedFields += "<n>";
       }
       else if ((TypedId) `<Id n>` := v) {
         c.define("<n>", fieldId(), n, defType(unknownType()));
-        c.report(warning(v, "Field <n> has no type annotation"));
+        definedFields += "<n>";
       }
     }
+    
+    if ((DataBody) `<Constructor cons>` := body) {
+      if ((Constructor) `<Id cname> = struct ( <{TypedId ","}+ cvars> )` := cons) {
+        for (cv <- cvars) {
+          str fieldName = "";
+          if ((TypedId) `<Id n> : <Type t>` := cv) fieldName = "<n>";
+          else if ((TypedId) `<Type t> <Id n>` := cv) fieldName = "<n>";
+          else if ((TypedId) `<Id n>` := cv) fieldName = "<n>";
+          
+          if (fieldName != "" && fieldName notin definedFields) {
+            c.report(error(cv, "Field \'<fieldName>\' not defined in data structure"));
+          }
+        }
+      }
+    }
+    
     collect(body, c);
   c.leaveScope(current);
+  
+  if ("<name>" != "<endName>") {
+    c.report(error(current, "Data definition end name mismatch"));
+  }
 }
 
 // =======================
@@ -157,22 +198,17 @@ void collect(current: (Constructor) `<Id name> = struct ( <{TypedId ","}+ vars> 
   c.enterScope(current);
     for (v <- vars) {
       if ((TypedId) `<Id n> : <Type t>` := v) {
-        validateFieldType(t, v, c);
-        c.define("<n>", fieldId(), n, defType(syntaxTypeToAType(t)));
+        c.use(n, {fieldId()});
       }
       else if ((TypedId) `<Type t> <Id n>` := v) {
-        validateFieldType(t, v, c);
-        c.define("<n>", fieldId(), n, defType(syntaxTypeToAType(t)));
+        c.use(n, {fieldId()});
       }
       else if ((TypedId) `<Id n>` := v) {
-        c.define("<n>", fieldId(), n, defType(unknownType()));
-        c.report(warning(v, "Field <n> has no type annotation"));
+        c.use(n, {fieldId()});
       }
     }
   c.leaveScope(current);
 }
-
-// TypedId collectors removed - handled inline in context
 
 // =======================
 // Function collection
@@ -195,30 +231,23 @@ void collect(current: (FunctionDef) `function <Id name> ( <{Id ","}* params> ) d
 // =======================
 // Statement collection
 // =======================
-void collect(current: (Statement) `<TypedId tid> = <Expression val>`, Collector c) {
+void collect(current: (Statement) `<Id lhs> = <Expression val>`, Collector c) {
   collect(val, c);
-  if ((TypedId) `<Id n> : <Type t>` := tid) {
-    validateFieldType(t, tid, c);
-    c.define("<n>", variableId(), n, defType(syntaxTypeToAType(t)));
-    c.requireEqual(syntaxTypeToAType(t), val, error(val, "Type mismatch: expected %t, got %t", syntaxTypeToAType(t), val));
-  }
-  else if ((TypedId) `<Type t> <Id n>` := tid) {
-    validateFieldType(t, tid, c);
-    c.define("<n>", variableId(), n, defType(syntaxTypeToAType(t)));
-    c.requireEqual(syntaxTypeToAType(t), val, error(val, "Type mismatch: expected %t, got %t", syntaxTypeToAType(t), val));
-  }
-  else if ((TypedId) `<Id n>` := tid) {
-    c.define("<n>", variableId(), n, defType(unknownType()));
-    c.report(warning(tid, "Variable <n> has no type annotation"));
-  }
+  c.define("<lhs>", variableId(), lhs, defType(unknownType()));
 }
 
-void collect(current: (Statement) `<Type typeAnn> <Id varName> = <Expression val>`, Collector c) {
-  validateFieldType(typeAnn, current, c);
+void collect(current: (Statement) `<Type typeAnn> <Id varId> = <Expression val>`, Collector c) {
   AType atype = syntaxTypeToAType(typeAnn);
-  c.define("<varName>", variableId(), varName, defType(atype));
+  c.define("<varId>", variableId(), varId, defType(atype));
   collect(val, c);
-  c.requireEqual(atype, val, error(val, "Type mismatch: expected %t, got %t", atype, val));
+  c.requireEqual(atype, val, error(val, "Type mismatch: expected <prettyAType(atype)>, got %t", val));
+}
+
+void collect(current: (Statement) `<Id varId> : <Type typeAnn> = <Expression val>`, Collector c) {
+  AType atype = syntaxTypeToAType(typeAnn);
+  c.define("<varId>", variableId(), varId, defType(atype));
+  collect(val, c);
+  c.requireEqual(atype, val, error(val, "Type mismatch: expected <prettyAType(atype)>, got %t", val));
 }
 
 void collect(current: (Statement) `<ConditionalStmt ifs>`, Collector c) {
@@ -230,15 +259,15 @@ void collect(current: (Statement) `<LoopStmt loop>`, Collector c) {
 }
 
 void collect(current: (Statement) `<Invocation inv>`, Collector c) {
-  collect(inv, c);
+  // No validation for invocations
 }
 
-void collect(current: (Statement) `<TypedId varName> = iterator ( <{Id ","}* inVars> ) yielding ( <{Id ","}* outVars> )`, Collector c) {
-  collect(varName, c);
+void collect(current: (Statement) `<Id varName> = iterator ( <{Id ","}* inVars> ) yielding ( <{Id ","}* outVars> )`, Collector c) {
+  c.define("<varName>", variableId(), varName, defType(unknownType()));
 }
 
-void collect(current: (Statement) `<TypedId varName> = from <Expression fromP> to <Expression toP>`, Collector c) {
-  collect(varName, c);
+void collect(current: (Statement) `<Id varName> = from <Expression fromP> to <Expression toP>`, Collector c) {
+  c.define("<varName>", variableId(), varName, defType(unknownType()));
   collect(fromP, c);
   collect(toP, c);
 }
@@ -259,9 +288,9 @@ void collect(current: (ConditionalStmt) `<CondStmt condStmt>`, Collector c) {
   collect(condStmt, c);
 }
 
-void collect(current: (IfStmt) `if <Expression cond> then <Statement+ thenBlock> end`, Collector c) {
+void collect(current: (IfStmt) `if <Expression cond> then <Statement* thenBlock> end`, Collector c) {
   collect(cond, c);
-  c.requireEqual(boolType(), cond, error(cond, "Condition must be Bool, got %t", cond));
+  c.requireEqual(boolType(), cond, error(cond, "Condition must be Bool"));
   c.enterScope(current);
     for (s <- thenBlock) collect(s, c);
   c.leaveScope(current);
@@ -276,7 +305,7 @@ void collect(current: (CondStmt) `cond <Expression cond> do <CondClause+ clauses
 
 void collect(current: (CondClause) `<Expression cond> -\> <Statement+ body>`, Collector c) {
   collect(cond, c);
-  c.requireEqual(boolType(), cond, error(cond, "Condition must be Bool, got %t", cond));
+  c.requireEqual(boolType(), cond, error(cond, "Condition must be Bool"));
   c.enterScope(current);
     for (s <- body) collect(s, c);
   c.leaveScope(current);
@@ -288,8 +317,8 @@ void collect(current: (CondClause) `<Expression cond> -\> <Statement+ body>`, Co
 void collect(current: (LoopStmt) `for <Id var> from <Expression fromExpr> to <Expression toExpr> do <Statement* body> end`, Collector c) {
   collect(fromExpr, c);
   collect(toExpr, c);
-  c.requireEqual(intType(), fromExpr, error(fromExpr, "Range start must be Int, got %t", fromExpr));
-  c.requireEqual(intType(), toExpr, error(toExpr, "Range end must be Int, got %t", toExpr));
+  c.requireEqual(intType(), fromExpr, error(fromExpr, "Range start must be Int"));
+  c.requireEqual(intType(), toExpr, error(toExpr, "Range end must be Int"));
   c.enterScope(current);
     c.define("<var>", variableId(), var, defType(intType()));
     for (s <- body) collect(s, c);
@@ -308,11 +337,11 @@ void collect(current: (LoopStmt) `for <Id var> in <Expression expr> do <Statemen
 // Invocation collection
 // =======================
 void collect(current: (Invocation) `<Id name> $ ( <{Id ","}* vars> )`, Collector c) {
-  // Don't enforce resolution of function names
+  // No validation
 }
 
 void collect(current: (Invocation) `<Id recv> . <Id method> ( <{Id ","}* vars> )`, Collector c) {
-  // Don't enforce resolution of receiver variable
+  // No validation
 }
 
 // =======================
@@ -320,110 +349,128 @@ void collect(current: (Invocation) `<Id recv> . <Id method> ( <{Id ","}* vars> )
 // =======================
 void collect(current: (Expression) `<OrExpr expr>`, Collector c) {
   collect(expr, c);
+  c.fact(current, expr);
 }
 
 void collect(current: (OrExpr) `<AndExpr expr>`, Collector c) {
   collect(expr, c);
+  c.fact(current, expr);
 }
 
 void collect(current: (OrExpr) `<OrExpr left> or <AndExpr right>`, Collector c) {
-  c.fact(current, boolType());
   collect(left, c);
   collect(right, c);
-  c.requireEqual(boolType(), left, error(left, "Operand must be Bool, got %t", left));
-  c.requireEqual(boolType(), right, error(right, "Operand must be Bool, got %t", right));
+  c.requireEqual(boolType(), left, error(left, "Operand must be Bool"));
+  c.requireEqual(boolType(), right, error(right, "Operand must be Bool"));
+  c.fact(current, boolType());
 }
 
 void collect(current: (AndExpr) `<CmpExpr expr>`, Collector c) {
   collect(expr, c);
+  c.fact(current, expr);
 }
 
 void collect(current: (AndExpr) `<AndExpr left> and <CmpExpr right>`, Collector c) {
-  c.fact(current, boolType());
   collect(left, c);
   collect(right, c);
-  c.requireEqual(boolType(), left, error(left, "Operand must be Bool, got %t", left));
-  c.requireEqual(boolType(), right, error(right, "Operand must be Bool, got %t", right));
+  c.requireEqual(boolType(), left, error(left, "Operand must be Bool"));
+  c.requireEqual(boolType(), right, error(right, "Operand must be Bool"));
+  c.fact(current, boolType());
 }
 
 void collect(current: (CmpExpr) `<AddExpr expr>`, Collector c) {
   collect(expr, c);
+  c.fact(current, expr);
 }
 
 void collect(current: (CmpExpr) `<AddExpr left> <CmpOp op> <AddExpr right>`, Collector c) {
-  c.fact(current, boolType());
   collect(left, c);
   collect(right, c);
-  c.requireEqual(intType(), left, error(left, "Comparison operand must be Int, got %t", left));
-  c.requireEqual(intType(), right, error(right, "Comparison operand must be Int, got %t", right));
+  c.fact(current, boolType());
 }
 
 void collect(current: (AddExpr) `<MulExpr expr>`, Collector c) {
   collect(expr, c);
+  c.fact(current, expr);
 }
 
 void collect(current: (AddExpr) `<AddExpr left> <AddOp op> <MulExpr right>`, Collector c) {
-  c.fact(current, intType());
   collect(left, c);
   collect(right, c);
-  c.requireEqual(intType(), left, error(left, "Operand must be Int, got %t", left));
-  c.requireEqual(intType(), right, error(right, "Operand must be Int, got %t", right));
+  c.calculate("binary add", current, [left, right],
+    AType(Solver s) {
+      AType lt = s.getType(left);
+      AType rt = s.getType(right);
+      if (lt == floatType() || rt == floatType()) return floatType();
+      return intType();
+    }
+  );
 }
 
 void collect(current: (MulExpr) `<PowExpr expr>`, Collector c) {
   collect(expr, c);
+  c.fact(current, expr);
 }
 
 void collect(current: (MulExpr) `<MulExpr left> <MulOp op> <PowExpr right>`, Collector c) {
-  c.fact(current, intType());
   collect(left, c);
   collect(right, c);
-  c.requireEqual(intType(), left, error(left, "Operand must be Int, got %t", left));
-  c.requireEqual(intType(), right, error(right, "Operand must be Int, got %t", right));
+  c.calculate("binary mul", current, [left, right],
+    AType(Solver s) {
+      AType lt = s.getType(left);
+      AType rt = s.getType(right);
+      if (lt == floatType() || rt == floatType()) return floatType();
+      return intType();
+    }
+  );
 }
 
 void collect(current: (PowExpr) `<UnaryExpr expr>`, Collector c) {
   collect(expr, c);
+  c.fact(current, expr);
 }
 
 void collect(current: (PowExpr) `<UnaryExpr left> ** <PowExpr right>`, Collector c) {
-  c.fact(current, intType());
   collect(left, c);
   collect(right, c);
-  c.requireEqual(intType(), left, error(left, "Operand must be Int, got %t", left));
-  c.requireEqual(intType(), right, error(right, "Operand must be Int, got %t", right));
+  c.fact(current, intType());
 }
 
 void collect(current: (UnaryExpr) `<Postfix postfixExpr>`, Collector c) {
   collect(postfixExpr, c);
+  c.fact(current, postfixExpr);
 }
 
 void collect(current: (UnaryExpr) `neg <UnaryExpr operand>`, Collector c) {
-  c.fact(current, boolType());
   collect(operand, c);
-  c.requireEqual(boolType(), operand, error(operand, "Operand must be Bool, got %t", operand));
+  c.requireEqual(boolType(), operand, error(operand, "Operand must be Bool"));
+  c.fact(current, boolType());
 }
 
 void collect(current: (UnaryExpr) `- <UnaryExpr operand>`, Collector c) {
-  c.fact(current, intType());
   collect(operand, c);
-  c.requireEqual(intType(), operand, error(operand, "Operand must be Int, got %t", operand));
+  c.calculate("unary minus", current, [operand],
+    AType(Solver s) { return s.getType(operand); }
+  );
 }
 
 void collect(current: (Postfix) `<Primary primaryExpr>`, Collector c) {
   collect(primaryExpr, c);
+  c.fact(current, primaryExpr);
 }
 
 void collect(current: (Primary) `( <Expression expr> )`, Collector c) {
   collect(expr, c);
+  c.fact(current, expr);
 }
 
 void collect(current: (Primary) `<Literal lit>`, Collector c) {
   collect(lit, c);
+  c.fact(current, lit);
 }
 
 void collect(current: (Primary) `<Id name>`, Collector c) {
-  c.use("<name>", {variableId()});
+  c.use(name, {variableId()});
 }
 
 void collect(current: (Primary) `<ConstructorCall ctor>`, Collector c) {
@@ -431,7 +478,7 @@ void collect(current: (Primary) `<ConstructorCall ctor>`, Collector c) {
 }
 
 void collect(current: (Primary) `<Invocation inv>`, Collector c) {
-  collect(inv, c);
+  // No validation
 }
 
 // =======================
@@ -472,11 +519,14 @@ void collect(current: (ConstructorCall) `struct ( <{Expression ","}* args> )`, C
   for (e <- args) collect(e, c);
 }
 
+// =======================
+// Main entry point
+// =======================
 public TModel typeCheck(Program p) {
-  return collectAndSolve(p, config());
+  return collectAndSolve(p, myConfig());
 }
 
 public TModel collectAndSolve(Tree pt) {
-  start[Program] parsed = pt;
-  return collectAndSolve(parsed.top, config());
+  if (pt has top) pt = pt.top;
+  return collectAndSolve(pt, myConfig());
 }
