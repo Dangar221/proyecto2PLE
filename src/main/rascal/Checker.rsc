@@ -99,11 +99,13 @@ void collect(current: (Data) `<Id assignName> : <Type dataType> = data with <{Ty
     set[str] definedFields = {};
     for (v <- vars) {
       if ((TypedId) `<Id n> : <Type t>` := v) {
-        c.define("<n>", fieldId(), n, defType(syntaxTypeToAType(t)));
+        AType fieldType = syntaxTypeToAType(t);
+        c.define("<n>", fieldId(), n, defType(fieldType));
         definedFields += "<n>";
       }
       else if ((TypedId) `<Type t> <Id n>` := v) {
-        c.define("<n>", fieldId(), n, defType(syntaxTypeToAType(t)));
+        AType fieldType = syntaxTypeToAType(t);
+        c.define("<n>", fieldId(), n, defType(fieldType));
         definedFields += "<n>";
       }
       else if ((TypedId) `<Id n>` := v) {

@@ -124,3 +124,54 @@ data Int Point with x, y
   origin = struct(x, y) 
 end Point 
 ]]
+
+test ComplexExpression [[
+  function testExpr() do 
+    Int result = (5 + 3) * 2 - 1
+    Bool flag = result > 10 and result < 20
+  end testExpr 
+]]
+
+test LoopWithTypes [[
+  function testLoop() do 
+    Int sum = 0
+    for i from 1 to 10 do
+      sum = sum + i
+    end
+  end testLoop
+]]
+
+test DataWithFunction [[
+  Counter: Int = data with value: Int
+    function increment(n) do
+      Int newVal = n + 1
+    end increment
+  end Counter
+]]
+
+test MultipleDataStructures [[
+  Point: Int = data with x: Int, y: Int
+    origin = struct(x, y)
+  end Point
+  
+  Circle: Int = data with center: Int, radius: Int
+    unitCircle = struct(center, radius)
+  end Circle
+]]
+
+test NestedBooleanExpression [[
+  function testNested() do 
+    Bool result = (true or false) and (5 > 3)
+  end testNested
+]]
+
+test AllComparisons [[
+  function testCmp() do 
+    Bool a = 5 < 10
+    Bool b = 5 > 3
+    Bool c = 5 <= 5
+    Bool d = 5 >= 5
+    Bool e = 5 = 5
+    Bool f = 5 <> 3
+  end testCmp
+]]
